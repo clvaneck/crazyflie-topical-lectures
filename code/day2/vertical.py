@@ -11,6 +11,9 @@ import numpy as np
 
 GRAVITY = 9.80665
 RAW_COLUMNS = ("time_s", "acc_x_g", "acc_y_g", "acc_z_g", "range_mm")
+LIVE_SENSOR_COLUMNS = ("gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z", "range.zrange")
+LIVE_COLUMNS = ("time_s", *LIVE_SENSOR_COLUMNS)
+VERTICAL_SENSOR_COLUMNS = ("acc.x", "acc.y", "acc.z", "range.zrange")
 MAX_GAP_S = 0.30
 
 
@@ -91,8 +94,8 @@ def check_rest(raw, end_s=5.0, *, range_noise_std_m=0.):
     rest = raw[time < end_s]
     force, ranges = rest[:, 1:4], rest[:, 4] / 1000
     if (len(rest) < 30 or not np.all(np.isfinite(rest))
-            or np.any(ranges < .02) or np.any(ranges > 2.0)):
-        raise ValueError("Calibration needs finite acceleration and floor ranges of 0.02-2 m; check the sensor's clear view from a raised support.")
+            or np.any(ranges <= 0) or np.any(ranges > 4.0)):
+        raise ValueError("Calibration needs finite acceleration and positive floor ranges no greater than 4 m.")
     if (abs(np.linalg.norm(force.mean(axis=0)) - 1) > .08
             or np.linalg.norm(force[:, :2].mean(axis=0)) > .10
             or force[:, 2].mean() < .9 or force[:, 2].std() > .03
@@ -134,7 +137,7 @@ def prepare(raw, metadata, *, calibration=None, truth=None):
     if mask.sum() < 2:
         raise ValueError("Need motion samples after calibration.")
     ranges = raw[:, 4] / 1000
-    ranges[(ranges < .02) | (ranges > 2) | ~np.isfinite(ranges)] = np.nan
+    ranges[(ranges <= 0) | (ranges > 4) | ~np.isfinite(ranges)] = np.nan
     initial = ranges[mask][0]
     if not np.isfinite(initial):
         raise ValueError("The first filtering sample needs a valid range for initialization.")
@@ -291,17 +294,29 @@ def with_outlier(data, time_s=12., offset_m=.15):
 def load_raw(directory):
     directory = Path(directory)
     metadata = json.loads((directory / "recording.json").read_text(encoding="utf-8-sig"))
-    if (metadata.get("format") != "vertical-sensors-v1"
-            or metadata.get("status") != "complete" or metadata.get("columns") != list(RAW_COLUMNS)):
+    recording_format = metadata.get("format")
+    if recording_format == "vertical-sensors-v1":
+        columns = RAW_COLUMNS
+        value_columns = RAW_COLUMNS
+    elif recording_format == "vertical-sensors-v2":
+        columns = LIVE_COLUMNS
+        value_columns = ("time_s", *VERTICAL_SENSOR_COLUMNS)
+        if (metadata.get("channels") != list(LIVE_SENSOR_COLUMNS)
+                or metadata.get("vertical_analysis_channels") != list(VERTICAL_SENSOR_COLUMNS)):
+            raise ValueError("Live vertical recording has unexpected sensor or analysis channels.")
+    else:
+        raise ValueError("Choose a complete sensor-level vertical recording with declared columns.")
+    if metadata.get("status") != "complete" or metadata.get("columns") != list(columns):
         raise ValueError("Choose a complete sensor-level vertical recording with declared columns.")
     content = (directory / "raw.csv").read_bytes()
     if hashlib.sha256(content).hexdigest() != metadata.get("raw_sha256"):
         raise ValueError("Raw recording hash does not match metadata.")
     with (directory / "raw.csv").open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
-        if reader.fieldnames != list(RAW_COLUMNS):
+        if reader.fieldnames != list(columns):
             raise ValueError("Unexpected vertical recording columns.")
-        rows = [[float(row[name]) if row[name] else np.nan for name in RAW_COLUMNS] for row in reader]
+        rows = [[float(row[name]) if row[name] else np.nan for name in value_columns]
+                for row in reader]
     return np.asarray(rows), metadata
 
 
@@ -317,17 +332,25 @@ def select(directory=None, *, seed=0, calibration=None, settings=None):
     return data
 
 
-def save_comparison(data, runs, output, *, notes=""):
+def save_comparison(data, runs, output, *, notes="", plot_pull_distribution=False):
     """Keep timestamped diagnostics, frozen settings, provenance and compact plots."""
     import matplotlib.pyplot as plt
 
     if not runs or any(result['input_sha256'] != data_fingerprint(data) for result in runs.values()):
         raise ValueError("Run results must match the selected timestamped data.")
+    pull_distribution_labels = ("baseline", "V-small", "V-large", "Q-candidate")
+    if plot_pull_distribution and not all(label in runs for label in pull_distribution_labels):
+        raise ValueError("Pull-distribution plots need baseline, V-small, V-large and Q-candidate runs.")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     np.savetxt(output / 'inputs.csv', np.column_stack((data.time_s, data.acceleration_m_s2, data.height_m)),
                delimiter=',', header='time_s,vertical_acceleration_m_s2,range_height_m', comments='')
-    figure, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    if plot_pull_distribution:
+        figure, axes = plt.subplots(4, 1, figsize=(10, 10))
+        axes[1].sharex(axes[0])
+        axes[2].sharex(axes[0])
+    else:
+        figure, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
     axes[0].plot(data.time_s, data.height_m, '.', color='.65', label="ToF measurement")
     integrated_height, integrated_velocity = [data.initial_height_m], [0.]
     for index, dt in enumerate(np.diff(data.time_s), start=1):
@@ -363,6 +386,12 @@ def save_comparison(data, runs, output, *, notes=""):
                                         color=color, alpha=.12)
         pull = result['predicted_residual'] / np.sqrt(result['predicted_residual_variance'])
         axes[2].plot(result['time_s'], pull, '.', color=color, label=label)
+        if plot_pull_distribution and label in pull_distribution_labels:
+            finite_pull = pull[np.isfinite(pull)]
+            pull_rms = np.sqrt(np.mean(finite_pull**2))
+            axes[3].hist(finite_pull, bins=np.linspace(-5, 5, 81), density=True,
+                         histtype='step', linewidth=1.6, color=color,
+                         label=f"{label} (RMS={pull_rms:.2f})")
         saved_settings[label] = {"filter": result['settings'], "range_gap_s": result['range_gap_s'],
                                  "stationary_intervals_s": result['stationary_intervals_s'],
                                  "gate_threshold": result['gate_threshold'],
@@ -371,11 +400,22 @@ def save_comparison(data, runs, output, *, notes=""):
     if data.truth is not None:
         for component in (0, 1):
             axes[component].plot(data.time_s, data.truth[:, component], 'k:', label="simulation truth")
-    for axis, ylabel in zip(axes, ("Height [m]", "Vertical velocity [m/s]", "Predicted residual / sigma")):
+    labels = ["Height [m]", "Vertical velocity [m/s]", "Predicted residual / sigma"]
+    if plot_pull_distribution:
+        labels.append("Density")
+    for axis, ylabel in zip(axes, labels):
         axis.set_ylabel(ylabel)
         axis.grid(True)
         axis.legend(fontsize='small', ncol=2)
-    axes[-1].set_xlabel("Time since first firmware log sample [s] (simulated time for fallback)")
+    if plot_pull_distribution:
+        normal_x = np.linspace(-5, 5, 401)
+        normal_density = np.exp(-0.5 * normal_x**2) / np.sqrt(2 * np.pi)
+        axes[3].plot(normal_x, normal_density, 'k--', linewidth=1.4, label="Normal N(0, 1)")
+        axes[3].set_xlim(-5, 5)
+        axes[3].set_xlabel("Normalized predicted residual, r / sqrt(R)")
+        axes[2].set_xlabel("Time since first firmware log sample [s] (simulated time for fallback)")
+    else:
+        axes[-1].set_xlabel("Time since first firmware log sample [s] (simulated time for fallback)")
     figure.tight_layout()
     figure.savefig(output / "comparison.png", dpi=120)
     plt.close(figure)

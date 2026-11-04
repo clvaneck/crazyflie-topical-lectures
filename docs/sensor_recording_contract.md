@@ -24,20 +24,28 @@ power-cycle before flight, then choose a checked recording or simulation to cont
 
 For the initial rest, use a stable support with an opening beneath the sensor, 5-20 cm above the floor. This keeps the floor range valid before picking up the stopped drone.
 
-The sensor channels are `acc.x/y/z` in g and `range.zrange` in mm. No onboard state estimate or quaternion is needed. The raw CSV header is:
+Live vertical captures retain the full IMU and downward ToF sensor record: gyro
+channels in degrees per second, acceleration channels in g, and `range.zrange`
+in mm. The vertical model uses acceleration and range; gyros remain in the raw
+file for reuse. No onboard state estimate or quaternion is needed. The raw CSV
+header is:
 
 ```text
-time_s,acc_x_g,acc_y_g,acc_z_g,range_mm
+time_s,gyro.x,gyro.y,gyro.z,acc.x,acc.y,acc.z,range.zrange
 ```
 
-The metadata schema includes:
+New captures use `vertical-sensors-v2`; the loader also accepts existing
+`vertical-sensors-v1` files with the five-column vertical-only header. The
+metadata schema for new captures includes:
 
 ```json
 {
-  "format": "vertical-sensors-v1",
-  "source": "accelerometer and downward ToF sensor logs",
+  "format": "vertical-sensors-v2",
+  "source": "IMU and downward ToF sensor logs",
   "status": "complete",
-  "columns": ["time_s", "acc_x_g", "acc_y_g", "acc_z_g", "range_mm"],
+  "columns": ["time_s", "gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z", "range.zrange"],
+  "channels": ["gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z", "range.zrange"],
+  "vertical_analysis_channels": ["acc.x", "acc.y", "acc.z", "range.zrange"],
   "raw_sha256": "SHA-256 of the exact raw.csv bytes",
   "timing": "Unwrapped firmware log times in seconds; sensor delays not compensated.",
   "known_rest_intervals_s": []
@@ -46,9 +54,13 @@ The metadata schema includes:
 
 The helper also records URI, channels, model assumptions and the firmware-stop check. Add observed rest intervals; the motion prompts alone are not evidence that the drone stayed still. Preserve partial captures; failed/incomplete status and hash mismatches are rejected. UTF-8 BOM inputs are accepted.
 
-Measurement updates use each recorded timestamp after propagation over its measured dt. Acceleration approximates the preceding interval. Range and acceleration share one log block; its timestamp is a logging-time proxy rather than proof of synchronous sensor acquisition. The loader rejects duplicate/reversed times and gaps above 0.30 s.
+Measurement updates use each recorded timestamp after propagation over its measured dt. Acceleration approximates the preceding interval. IMU and range share one log block; its timestamp is a logging-time proxy rather than proof of synchronous sensor acquisition. The loader rejects duplicate/reversed times and gaps above 0.30 s.
 
-Subtract the initial stationary Z specific-force mean, including gravity, then multiply by 9.80665. Fit it before filtering, and retain it unchanged on validation input. The first five seconds must be consistent with level rest and a stable range. The teaching model accepts floor ranges from 0.02 to 2 m; these are experiment checks, not manufacturer performance specifications. Invalid later ranges skip that update. Off-axis acceleration and upside-down motion fail the level/gentle-motion checks. Subtle tilt, sensor latency and calibration uncertainty remain model limitations; do not hide them by changing Q/V.
+Log variables use their firmware TOC types, not assumed types. For the live
+sensor block this is six 4-byte IMU floats plus the 2-byte `uint16_t` range,
+exactly 26 bytes.
+
+Subtract the initial stationary Z specific-force mean, including gravity, then multiply by 9.80665. Fit it before filtering, and retain it unchanged on validation input. The first five seconds must be consistent with level rest and a stable range. The teaching model accepts positive floor ranges up to 4 m, including measurements below 0.02 m; zero, negative, non-finite, and above-4 m returns are invalid. These are experiment checks, not manufacturer performance specifications. Invalid later ranges skip that update. Off-axis acceleration and upside-down motion fail the level/gentle-motion checks. Subtle tilt, sensor latency and calibration uncertainty remain model limitations; do not hide them by changing Q/V.
 
 ### Vertical analysis outputs
 

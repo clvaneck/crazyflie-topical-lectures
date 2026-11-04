@@ -290,30 +290,38 @@ motor_stop.engage_motor_stop = stop
                 self.assertEqual(len(processes), 1)
                 self.assertIsNotNone(processes[0].poll())
 
-    def test_survey_command_retains_the_discovered_uri(self):
-        path = Path(__file__).parent / 'day3/day3_race.ipynb'
-        notebook = json.loads(path.read_text())
-        cells = {cell['id']: ''.join(cell['source']) for cell in notebook['cells']}
+    def test_survey_capture_and_flight_identification_reuse_the_discovered_uri(self):
+        path = Path(__file__).parent / 'day3/03_flight.ipynb'
         uri = 'radio://0/51/2M/E7E7E7E707'
-        output = io.StringIO()
-        with redirect_stdout(output):
-            exec(cells['day3-survey-command'], {'uri': uri})
-        self.assertEqual(output.getvalue().count('--uri ' + uri), 2)
-        self.assertIn('python flight_runner.py --config CHECKED_COURSE.json --fly', output.getvalue())
-        self.assertNotIn('export ', output.getvalue())
-        self.assertNotIn('$env:', output.getvalue())
-        self.assertNotIn('/80/', output.getvalue())
+        flight = json.loads(path.read_text())
+        connection = next(''.join(cell['source']) for cell in flight['cells']
+                          if cell['id'] == 'flight-connect')
+        check = MagicMock(return_value=uri)
+        scope = dict(LABEL='7', check_drone=check)
+        exec(connection.replace('LABEL = None', 'LABEL = "7"'), scope)
+        self.assertEqual(scope['uri'], uri)
+        check.assert_called_once_with('7')
+        notebook = json.loads(path.with_name('01_survey.ipynb').read_text())
+        capture_cell = next(''.join(cell['source']) for cell in notebook['cells']
+                            if cell['id'] == 'survey-capture')
+        capture = MagicMock(return_value=Path('capture-01'))
+        scope = dict(uri=uri, data_source='live', output=Path('.'), capture_name='capture-01',
+                     duration_s=30, preparation_s=5, capture_outline=capture)
+        exec(capture_cell, scope)
+        capture.assert_called_once_with(uri, Path('capture-01'), ready_for_motor_stop=True,
+                                        duration_s=30, preparation_s=5)
 
     def test_connection_instructions_describe_live_connection_only(self):
         root = Path(__file__).resolve().parent
         for path in ('day2/02_calibration.ipynb', 'day2/03_height_velocity.ipynb',
-                     'day3/day3_race.ipynb'):
+                     'day3/03_flight.ipynb', 'day3/01_survey.ipynb'):
             notebook = json.loads((root / path).read_text())
             cells = {cell['id']: ''.join(cell['source']) for cell in notebook['cells']}
-            guide = next(text for name, text in cells.items() if name.endswith('-radio-guide'))
-            code = next(text for name, text in cells.items() if name.endswith('-radio'))
+            guide = next(text for name, text in cells.items()
+                         if name.endswith(('-radio-guide', '-connect-guide')))
+            code = next(text for name, text in cells.items() if name.endswith(('-radio', '-connect')))
             with self.subTest(path=path):
-                self.assertIn("Set `LABEL` to your drone's sticker label", guide)
+                self.assertIn("Set `LABEL` to", guide)
                 self.assertNotIn('offline', guide.lower())
                 self.assertNotIn('offline', code.lower())
 
@@ -322,10 +330,11 @@ motor_stop.engage_motor_stop = stop
         for path, setup_id, prefix in (
                 ('day2/02_calibration.ipynb', 'day2-calibration-setup', 'day2-calibration'),
                 ('day2/03_height_velocity.ipynb', 'day2-setup', 'day2-vertical'),
-                ('day3/day3_race.ipynb', 'day3-setup', 'day3')):
+                ('day3/03_flight.ipynb', 'flight-setup', 'flight'),
+                ('day3/01_survey.ipynb', 'survey-setup', 'survey')):
             notebook = json.loads((root / path).read_text())
             cells = {c['id']: ''.join(c['source']) for c in notebook['cells']}
-            source = cells[prefix + '-radio'].split('\n# retreieve', 1)[0]
+            source = cells[prefix + ('-connect' if prefix == 'flight' else '-radio')].split('\n# retreieve', 1)[0]
             scope = {'check_drone': radio.check_drone, 'output': root, 'uri': None}
             with self.subTest(path=path), patch.object(radio, 'assigned_uri') as connect:
                 if path == 'day2/02_calibration.ipynb':
@@ -343,16 +352,18 @@ motor_stop.engage_motor_stop = stop
         root = Path(__file__).resolve().parent
         uri = 'radio://0/2/2M/E7E7E7E700'
         for path in ('day2/02_calibration.ipynb', 'day2/03_height_velocity.ipynb',
-                     'day3/day3_race.ipynb'):
+                     'day3/03_flight.ipynb', 'day3/01_survey.ipynb'):
             notebook = json.loads((root / path).read_text())
             source = next(''.join(cell['source']).split('\n# retreieve', 1)[0]
-                          for cell in notebook['cells'] if cell['id'].endswith('-radio'))
+                          for cell in notebook['cells'] if cell['id'].endswith(('-radio', '-connect')))
             check = MagicMock(return_value=uri)
             scope = {'check_drone': check, 'output': root}
             with self.subTest(path=path):
                 exec(source.replace('LABEL = None', 'LABEL = 0', 1), scope)
                 expected_kwargs = {'cache_directory': root / '.cflib-cache'}
-                if path == 'day2/02_calibration.ipynb':
+                if path == 'day3/03_flight.ipynb':
+                    expected_kwargs = {}
+                if path in ('day2/02_calibration.ipynb', 'day2/03_height_velocity.ipynb'):
                     expected_kwargs['confirm_blink'] = False
                 check.assert_called_once_with(0, **expected_kwargs)
                 self.assertEqual(scope['uri'], uri)

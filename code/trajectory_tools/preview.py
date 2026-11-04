@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .course import frame_margin, gate_outline
+from .course import frame_margin, gate_outline, turning_velocities
 
 
 def plot_trajectory(course, trajectory):
@@ -21,6 +21,19 @@ def plot_trajectory(course, trajectory):
             axis.plot(points[:, a], points[:, b], label=label, **style)
 
     draw(positions, "Planned reference", color="C0")
+    crossings = trajectory.spline(trajectory.crossing_times_s)
+    draw(crossings, "Chosen crossings", marker="x", linestyle="", color="C4")
+    stops, fly_through = [], []
+    for turn in course.get("turning_waypoints", []):
+        for point, velocity in zip(turn["positions_m"], turning_velocities(turn)):
+            if np.any(np.asarray(velocity) != 0):
+                fly_through.append(point)
+            else:
+                stops.append(point)
+    if stops:
+        draw(np.asarray(stops), "Stop-and-turn waypoints", marker="s", linestyle="", color="C5")
+    if fly_through:
+        draw(np.asarray(fly_through), "Fly-through waypoints", marker="D", linestyle="", color="C6")
     for index, gate in enumerate(course["hoops"], start=1):
         draw(gate_outline(gate), "_nolegend_", color="0.4", linewidth=1)
         padding = (frame_margin(gate) + course["limits"]["drone_radius_m"]

@@ -8,7 +8,7 @@ from scipy.interpolate import BPoly, PPoly
 from race_common.geometry import unit_vector
 
 from .course import (crossing_region, frame_margin, gate_basis,
-                     opening_half_size, validate_course)
+                     opening_half_size, turning_velocities, validate_course)
 
 
 @dataclass(frozen=True)
@@ -17,6 +17,8 @@ class Trajectory:
     crossing_times_s: tuple[float, ...]
     speed_bound_m_s: float
     acceleration_bound_m_s2: float
+    time_scale: float = 1.0
+    turning_times_s: tuple[float, ...] = ()
 
     @property
     def duration_s(self):
@@ -32,35 +34,62 @@ class Trajectory:
 
 def build_trajectory(course):
     validate_course(course)
+    if course.get("planning_profile") == "conservative":
+        from .conservative import validate_transition_route
+
+        validate_transition_route(course)
     limits = course["limits"]
     speed = limits["target_speed_m_s"]
     offset = limits["pre_post_distance_m"]
     points = [np.asarray(course["start"], dtype=float)]
     velocities = [np.zeros(3)]
+    point_speeds = [speed]
     crossing_knots = []
+    turning_knots, turning_targets = [], []
+    turns = {turn["after_crossing"]: turn for turn in course.get("turning_waypoints", [])}
 
-    def append(point, velocity):
+    def append(point, velocity, requested_speed):
         # A shared exit/entry waypoint can occur on a forward/return course.
         # Stop there rather than assigning two contradictory tangents.
         if np.linalg.norm(point - points[-1]) < 1e-8:
             velocities[-1] = np.zeros(3)
+            point_speeds[-1] = min(point_speeds[-1], requested_speed)
         else:
             points.append(point)
             velocities.append(velocity)
+            point_speeds.append(requested_speed)
 
-    for gate in course["hoops"]:
-        centre = np.asarray(gate["centre"], dtype=float)
+    def append_turns(slot):
+        if slot not in turns:
+            return
+        turn = turns[slot]
+        for point, velocity in zip(turn["positions_m"], turning_velocities(turn)):
+            target = np.asarray(velocity, dtype=float)
+            append(np.asarray(point, dtype=float), target, speed)
+            turning_knots.append(len(points) - 1)
+            turning_targets.append(target)
+
+    append_turns(0)
+    for index, gate in enumerate(course["hoops"], start=1):
+        centre = np.asarray(gate["centre"], dtype=float) + np.asarray(gate.get("crossing_offset_m", [0, 0, 0]))
         normal = unit_vector(gate["normal"])
-        append(centre - offset * normal, speed * normal)
-        append(centre, speed * normal)
+        gate_speed = gate.get("speed_m_s", speed)
+        approach_velocity = np.zeros(3) if course.get("stop_at_approaches", False) else gate_speed * normal
+        append(centre - offset * normal, approach_velocity, gate_speed)
+        append(centre, gate_speed * normal, gate_speed)
         crossing_knots.append(len(points) - 1)
-        append(centre + offset * normal, speed * normal)
-    append(np.asarray(course["finish"], dtype=float), np.zeros(3))
+        append(centre + offset * normal, approach_velocity, gate_speed)
+        append_turns(index)
+    append(np.asarray(course["finish"], dtype=float), np.zeros(3), speed)
     velocities[0] = np.zeros(3)
     velocities[-1] = np.zeros(3)
+    for knot, target in zip(turning_knots, turning_targets):
+        if not np.array_equal(velocities[knot], target):
+            raise ValueError("Coincident control points conflict with the turning target velocity; use distinct points or zero velocity")
     points = np.asarray(points)
     velocities = np.asarray(velocities)
-    durations = np.maximum(np.linalg.norm(np.diff(points, axis=0), axis=1) / speed, 0.2)
+    segment_speeds = np.minimum(point_speeds[:-1], point_speeds[1:])
+    durations = np.maximum(np.linalg.norm(np.diff(points, axis=0), axis=1) / segment_speeds, 0.2)
 
     # Quintic Bernstein coefficients impose position/velocity and zero
     # acceleration at every knot. Thus position, velocity and acceleration are
@@ -78,9 +107,12 @@ def build_trajectory(course):
     # A Bernstein polynomial stays in the convex hull of its coefficients.
     # This checks the whole curve, not just the points used to draw it.
     if np.any(spline.c < lower - 1e-10) or np.any(spline.c > upper + 1e-10):
-        raise ValueError("trajectory control hull leaves bounds; move endpoints/gates or reduce approach distance")
-    speed_bound = float(np.max(np.linalg.norm(spline.derivative(1).c, axis=2)))
-    acceleration_bound = float(np.max(np.linalg.norm(spline.derivative(2).c, axis=2)))
+        raise ValueError("trajectory control hull leaves bounds; adjust positions, waypoint velocities or approach distance")
+    # Subdivision tightens the same continuous convex-hull bound. In stopped
+    # default routes, a single hull otherwise makes short flights very slow.
+    refinements = 2 if course.get("planning_profile") == "conservative" else 0
+    speed_bound = _derivative_bound(spline, 1, refinements)
+    acceleration_bound = _derivative_bound(spline, 2, refinements)
     # The acceleration-norm bound also conservatively guarantees positive
     # vertical thrust and a nominal tilt below the requested angle.
     tilt = np.deg2rad(limits["maximum_tilt_deg"])
@@ -91,9 +123,30 @@ def build_trajectory(course):
     spline = BPoly(spline.c, spline.x * scale)
     crossing_times = tuple(float(spline.x[index]) for index in crossing_knots)
     trajectory = Trajectory(spline, crossing_times, speed_bound / scale,
-                            acceleration_bound / scale**2)
+                            acceleration_bound / scale**2, scale,
+                            tuple(float(spline.x[index]) for index in turning_knots))
     validate_crossings(course, trajectory)
     return trajectory
+
+
+def _split_bernstein(coefficients):
+    """de Casteljau halves represent exactly the same curve on each half interval."""
+    levels = [coefficients]
+    while len(levels[-1]) > 1:
+        levels.append((levels[-1][:-1] + levels[-1][1:]) / 2)
+    left = np.asarray([level[0] for level in levels])
+    right = np.asarray([level[-1] for level in reversed(levels)])
+    return left, right
+
+
+def _derivative_bound(spline, order, refinements):
+    segments = list(np.moveaxis(spline.derivative(order).c, 1, 0))
+    for _ in range(refinements):
+        halves = []
+        for coefficients in segments:
+            halves.extend(_split_bernstein(coefficients))
+        segments = halves
+    return max(float(np.linalg.norm(coefficients, axis=1).max()) for coefficients in segments)
 
 
 def _coplanar_curve_is_outside(coefficients, gate, clearance, depth=0):
@@ -114,12 +167,7 @@ def _coplanar_curve_is_outside(coefficients, gate, clearance, depth=0):
             return True
     if depth >= 12:
         return False
-    # de Casteljau subdivision at the midpoint preserves the exact polynomial.
-    levels = [coefficients]
-    while len(levels[-1]) > 1:
-        levels.append((levels[-1][:-1] + levels[-1][1:]) / 2)
-    left = np.asarray([level[0] for level in levels])
-    right = np.asarray([level[-1] for level in reversed(levels)])
+    left, right = _split_bernstein(coefficients)
     return (_coplanar_curve_is_outside(left, gate, clearance, depth + 1)
             and _coplanar_curve_is_outside(right, gate, clearance, depth + 1))
 

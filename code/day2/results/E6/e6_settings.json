@@ -1,0 +1,88 @@
+{
+  "settings": {
+    "frozen-settings": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.0016846304633301044,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": 0.06488166697786572,
+        "pre_gate_pull_std": 1.0154514620895352,
+        "rejected": 0
+      }
+    }
+  },
+  "calibration": {
+    "acceleration_at_rest_g": 0.9994684273004532,
+    "range_std_m": 0.0016846304633301044,
+    "end_s": 5.0
+  },
+  "source": {
+    "format": "vertical-sensors-v2",
+    "source": "IMU and downward ToF sensor logs",
+    "uri": "radio://0/30/2M/E7E7E7E704",
+    "units": {
+      "time_s": "seconds",
+      "gyro.x/gyro.y/gyro.z": "degrees per second",
+      "acc.x/acc.y/acc.z": "g",
+      "range.zrange": "millimetres"
+    },
+    "columns": [
+      "time_s",
+      "gyro.x",
+      "gyro.y",
+      "gyro.z",
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "status": "complete",
+    "channels": [
+      "gyro.x",
+      "gyro.y",
+      "gyro.z",
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "vertical_analysis_channels": [
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "timing": "24-bit firmware log milliseconds, unwrapped relative to first sensor packet. Log times approximate sensor times; no delay compensation. Acceleration approximates the preceding interval.",
+    "model": "Level drone, gentle vertical motion, fixed flat floor; no onboard stateEstimate channels.",
+    "known_rest_intervals_s": [],
+    "motor_stop_check": {
+      "parameter": "stabilizer.stop",
+      "value": 1,
+      "supervisor_info": 580,
+      "motor_outputs": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "calibration_check": {
+      "acceleration_at_rest_g": 0.9996764701604843,
+      "range_std_m": 0.0014445648745444687,
+      "end_s": 5.0
+    },
+    "raw_sha256": "d8647ff66c5d77b4209e985b4c50de0be39afc49f65d4fa77f0ee6ef60d78bb1",
+    "input_sha256": "069a4916f922b148fef62c79062f75bbd4c75671ecd3e2ca294eecf919e3bf61"
+  },
+  "notes": "",
+  "processed_input_sha256": "93515bb1887f8fcf118f1518dbd179adf4d01dbbf1d9e221d9bee24ad61fdf0b",
+  "limitations": "Bands are model uncertainty, not independent accuracy evidence. Level drone and fixed floor assumed."
+}

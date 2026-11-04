@@ -20,7 +20,12 @@ def make_hoops() -> list[Hoop]:
     return hoops
 
 
-def run(seed: int = 7, scenario: str = "combined") -> dict[str, np.ndarray]:
+def run(seed: int = 7, scenario: str = "combined", *, speed_policy=None) -> dict[str, np.ndarray]:
+    """Simulate estimation and evaluate a speed policy without altering motion.
+
+    Optional speed_policy(clearance_m, nominal_speed_m_s) returns a finite speed
+    in [0, maximum_speed_m_s], with zero required for non-positive clearance.
+    """
     records = run_filter(seed, scenario)
     hoops = make_hoops()
     limits = RaceLimits()
@@ -28,13 +33,18 @@ def run(seed: int = 7, scenario: str = "combined") -> dict[str, np.ndarray]:
     for position, covariance in zip(records["estimate"], records["position_covariance"]):
         hoop = min(hoops, key=lambda candidate: abs(candidate.signed_plane_distance(position)))
         speed, clearance = recommended_speed(hoop, position, covariance, limits)
+        if speed_policy is not None:
+            speed = float(speed_policy(float(clearance), limits.nominal_speed_m_s))
+            if (not np.isfinite(speed) or speed < 0 or speed > limits.maximum_speed_m_s
+                    or (clearance <= 0 and speed != 0)):
+                raise ValueError("Speed policy must return a finite speed within limits and stop at non-positive clearance.")
         speeds.append(speed)
         clearances.append(clearance)
     return dict(records, speed=np.asarray(speeds), clearance=np.asarray(clearances))
 
 
 def plot(records: dict[str, np.ndarray], scenario: str = "combined",
-         output: Path | None = None, show: bool = True) -> None:
+         output: Path | None = None, show: bool = True):
     time_s = records["time"]
     truth_position = records["truth"]
     estimate = records["estimate"]
@@ -76,6 +86,7 @@ def plot(records: dict[str, np.ndarray], scenario: str = "combined",
     if show:
         plt.show()
     plt.close(figure)
+    return figure
 
 
 def main(argv=None) -> None:

@@ -10,6 +10,7 @@ lag of 0.3 s, which is roughly what the onboard velocity loop does. The tests
 check the loop logic: timing, clamping, the step, the abort conditions, saving,
 loading and the step numbers.
 """
+import math
 import os
 import shutil
 import sys
@@ -256,6 +257,8 @@ class FakeMotionCommander:
 
     def start_linear_motion(self, vx, vy, vz, rate_yaw=0.0):
         WORLD.v_set = (vx, vy)
+        if vz or rate_yaw:
+            FakeMotionCommander.calls.append(('linear', vx, vy, vz, rate_yaw))
 
     def down(self, distance_m, velocity=0.2):
         FakeMotionCommander.calls.append(('down', distance_m))
@@ -664,6 +667,30 @@ def test_fly_path_under_the_firmware_logs_like_a_flight():
     run = crazyflie.fly_path([('forward', 2.0)], uri=TEST_URI, speed=0.2, hover_s=0.2, stop_event=stop)
     assert run['aborted'] == 'stopped by abort', run['aborted']
     assert _raises(crazyflie.DroneError, crazyflie.fly_path, [('sideways', 1.0)], uri=TEST_URI)
+
+
+def test_fly_path_helix():
+    _reset_world()
+    FakeMotionCommander.calls.clear()
+    run = crazyflie.fly_path([('helix', 0.2, 0.3, 1.0)], uri=TEST_URI, speed=0.4, hold_s=0.3, hover_s=0.2,
+                             stop_event=threading.Event())
+    assert run['aborted'] is None, run['aborted']
+    linear = [c for c in FakeMotionCommander.calls if c[0] == 'linear']
+    assert len(linear) == 1
+    _, vx, vy, vz, rate_yaw = linear[0]
+    duration = 2 * math.pi * 0.2 / 0.4
+    assert abs(vx - 0.4) < 1e-9 and vy == 0.0 and abs(vz - 0.3 / duration) < 1e-9
+    assert abs(rate_yaw - math.degrees(0.4 / 0.2)) < 1e-9          # left, a circle of 0.2 m
+    rows = np.asarray(run['rows'], dtype=float)
+    planned = rows[rows[:, 2] > 0.5][:, 7:9] - rows[0, 7:9]
+    assert abs(planned[:, 1].max() - 0.4) < 0.03, planned[:, 1].max()   # the circle reaches 2 r to the left
+    assert np.hypot(*planned[-1]) < 0.03                                 # and closes after one turn
+    down = [c for c in FakeMotionCommander.calls if c[0] == 'down']
+    assert abs(down[-1][1] - (0.5 + 0.3 - 0.1)) < 0.03, down               # landing starts from the climbed height
+    assert run['info']['moves'] == 'helix 0.2 0.3 1'
+    assert _raises(crazyflie.DroneError, crazyflie.fly_path, [('helix', 0.2, 0.3)], uri=TEST_URI)
+    assert _raises(crazyflie.DroneError, crazyflie.fly_path, [('helix', 0.2, 2.0, 1)], uri=TEST_URI)
+    assert _raises(crazyflie.DroneError, crazyflie.fly_path, [('down', 0.4)], uri=TEST_URI)
 
 
 def test_identify_response_and_the_fit():

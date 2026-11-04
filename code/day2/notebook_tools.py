@@ -7,6 +7,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import threading
@@ -187,7 +188,7 @@ def log_channel_elements(cf, channels: Sequence[str]):
 
 
 def capture(uri, output, channels, *, duration_s=60, period_ms=20, overwrite=False):
-    """Save selected raw Crazyflie log channels; optionally replace an existing capture."""
+    """Save selected log channels with elapsed seconds from the first firmware sample."""
     if not isinstance(uri, str) or not uri.startswith("radio://"):
         raise ValueError("Provide the assigned Crazyradio URI.")
     if not channels or isinstance(channels, str) or len(set(channels)) != len(channels):
@@ -211,13 +212,19 @@ def capture(uri, output, channels, *, duration_s=60, period_ms=20, overwrite=Fal
                 path.unlink()
     changed = threading.Event()
     lock = threading.Lock()
-    state = {"first_sample": None, "last_sample": None, "rows": 0, "error": None}
+    timestamp_modulus = 1 << 24
+    state = {
+        "first_sample": None, "last_sample": None, "rows": 0, "error": None,
+        "previous_timestamp_ms": None, "elapsed_ms": 0,
+    }
 
-    details = dict(uri=uri, channels=list(channels), duration_s=duration_s, period_ms=period_ms)
+    details = dict(uri=uri, channels=list(channels), duration_s=duration_s,
+                   period_ms=period_ms, timestamp_unit="seconds",
+                   timestamp_origin="first firmware sample")
     with _capture_receipt(destination, details) as receipt, \
             destination.open("x", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
-        writer.writerow(("firmware_timestamp_ms", *channels))
+        writer.writerow(("time_s", *channels))
         stream.flush()
 
         def receive(timestamp, data, _config):
@@ -228,10 +235,20 @@ def capture(uri, output, channels, *, duration_s=60, period_ms=20, overwrite=Fal
                     values = [float(data[channel]) for channel in channels]
                     if not all(math.isfinite(value) for value in values):
                         raise ValueError("log packet contains a non-finite value")
+                    timestamp_ms = int(timestamp)
+                    if not 0 <= timestamp_ms < timestamp_modulus:
+                        raise ValueError("firmware timestamp is outside its 24-bit range")
+                    previous_timestamp_ms = state["previous_timestamp_ms"]
+                    if previous_timestamp_ms is not None:
+                        delta_ms = (timestamp_ms - previous_timestamp_ms) % timestamp_modulus
+                        if delta_ms == 0 or delta_ms >= timestamp_modulus // 2:
+                            raise ValueError("firmware timestamps are duplicated or out of order")
+                        state["elapsed_ms"] += delta_ms
+                    state["previous_timestamp_ms"] = timestamp_ms
                     now = time.monotonic()
                     if state["first_sample"] is None:
                         state["first_sample"] = now
-                    writer.writerow((int(timestamp), *values))
+                    writer.writerow((state["elapsed_ms"] / 1000, *values))
                     stream.flush()
                     state["last_sample"] = now
                     state["rows"] += 1
@@ -298,15 +315,28 @@ def capture(uri, output, channels, *, duration_s=60, period_ms=20, overwrite=Fal
     return destination, state["rows"]
 
 
-def capture_vertical(output, uri, *, ready_for_motor_stop=False, duration_s=20):
-    """Acquire sensor-level height data in a bounded child; leave stop engaged."""
+def capture_vertical(output, uri, *, ready_for_motor_stop=False, duration_s=20,
+                     overwrite=False):
+    """Acquire sensor-level height data; optionally replace this capture directory."""
     if not ready_for_motor_stop or not isinstance(uri, str) or not uri.strip():
         raise ValueError("Set the assigned URI and confirm a stable surface, hands clear and other radio clients closed.")
     if not math.isfinite(duration_s) or not 18 <= duration_s <= 30:
         raise ValueError("Vertical capture duration must be between 18 and 30 seconds.")
-    output = Path(output).resolve()
+    if not isinstance(overwrite, bool):
+        raise ValueError("overwrite must be True or False.")
+    output = Path(output).expanduser().absolute()
+    if output.is_symlink():
+        raise ValueError(f"Refusing to overwrite a symbolic link: {output}")
+    output = output.resolve()
+    protected_paths = (Path(output.anchor), Path.home().resolve(), Path.cwd().resolve())
+    if any(path == output or output in path.parents for path in protected_paths):
+        raise ValueError(f"Refusing to overwrite a root, home, or workspace directory: {output}")
     if output.exists():
-        raise FileExistsError(f"Choose a new capture directory: {output}")
+        if not output.is_dir():
+            raise FileExistsError(f"Capture output exists and is not a directory: {output}")
+        if not overwrite:
+            raise FileExistsError(f"Capture directory already exists; set overwrite=True to replace it: {output}")
+        shutil.rmtree(output)
     # This notebook already owns the timeout; avoid a nested supervisor/worker.
     command = [sys.executable, '-u', '-m', 'day2.vertical_live', '--uri', uri.strip(),
                '--output', str(output), '--duration', str(duration_s),

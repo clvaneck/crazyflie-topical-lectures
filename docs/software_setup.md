@@ -268,7 +268,7 @@ during the Day 1 software session.
 
 Days 2 and 3 use the same environment and kernel. When you reach those sessions,
 open [day2/01_tracking.ipynb](../code/day2/01_tracking.ipynb) or
-[day3/day3_race.ipynb](../code/day3/day3_race.ipynb) in Jupyter for the scheduled
+[day3/02_trajectory.ipynb](../code/day3/02_trajectory.ipynb) in Jupyter for the scheduled
 filter experiments, trajectory planning and recording analysis. On Day 2, continue
 with [02 calibration](../code/day2/02_calibration.ipynb) and
 [03 height and velocity](../code/day2/03_height_velocity.ipynb), running each

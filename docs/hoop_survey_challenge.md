@@ -1,8 +1,10 @@
 # Measure the gates with the supplied survey tool
 
-We use the instructor-provided `scripts/measure_hoop.py` for R2. There is no need
-to design a survey method or write fitting code. The exercise is to collect a
-useful measurement, check the geometry and understand what could bias it.
+Use [01_survey.ipynb](../code/day3/01_survey.ipynb) for R2: record an outline,
+fit a circle or rectangle, inspect it and save the gate JSON for the race planner.
+It reuses the labelled connection and motor-free acquisition conventions from
+Days 1 and 2. The exercise is to collect a useful measurement, check the geometry
+and understand what could bias it.
 
 Allow 40 minutes for a shared survey of the course, with 20 minutes reserved for
 retries or hardware problems. Teams can use the same survey files and share
@@ -13,25 +15,21 @@ not the safety checks. Agree the final shared course before qualification.
 
 ## Assignment
 
-1. Confirm the Lighthouse frame and stable position estimate. Put the drone on a
-   stable surface with hands and loose objects clear of propellers, then close
-   cfclient and other control scripts. The survey tool asks for `STOP AND SURVEY`,
-   sets `stabilizer.stop=1` and verifies the locked state and four zero motor
-   outputs. Wait for **STOP VERIFIED** before picking up the drone. See the
-   [firmware-stop procedure](sensor_recording_contract.md#prepare-the-drone-for-hand-held-recording).
+1. Open the survey notebook, confirm the Lighthouse frame and connect by sticker
+   `LABEL`. Put the drone on a stable surface, clear of propellers, and close
+   cfclient. Wait for **STOP VERIFIED** before handling: the helper engages
+   `stabilizer.stop=1` and checks the firmware lock and four zero motor outputs.
 2. Use a pointer/jig referenced to the drone's estimated position. Account for
    any offset: pressing a deck or cage against the rim can shift the fitted gate.
    The script does not correct that offset. With fixed attitude, a known constant
    world-frame tip offset is added to the fitted centre when building the course;
    keep the original JSON and record the correction. Changing attitude makes this
    a sample-by-sample correction, outside this exercise. Avoid covering receivers.
-3. Run the appropriate command below on the laptop. At
-   `Command [Enter=record, q=quit]:`, press **Enter on the laptop keyboard** to
-   start recording the trace. Move the pointer around the complete inner opening,
-   then press **Enter in the same terminal** to stop. Confirm `Fit this trace?`
-   to fit the recorded points. One team member can operate the laptop while
-   another moves the drone, keeping its attitude steady and receivers visible.
-   Trace all four edges/corners for a rectangle. Select the
+3. Select live capture in the notebook. After stop verification, the default
+   five-second preparation interval precedes **TRACE STARTED**. Trace the complete
+   inner opening over 30 seconds; recording ends automatically. One team member
+   operates the laptop while another moves the drone at steady attitude with
+   receivers visible. Trace all four edges/corners for a rectangle. Select the
    [normal](glossary.md#clearance-and-gate-normal) sign for the
    intended crossing direction; reversing it does not move the physical plane.
 4. Check the centre, normal and aperture against independent manual measurements
@@ -40,25 +38,31 @@ not the safety checks. Agree the final shared course before qualification.
 5. Keep the JSON and check results. Use the geometry in the course configuration
    and plot the planned path for the team's flight checks.
 
-## Commands
+## Optional command-line alternative
 
-Use **Connect** in the [Day 3 notebook](../code/day3/day3_race.ipynb) with your
-sticker `LABEL`, then run its printed survey command from a project-root terminal
-with the environment active. The command already includes the discovered URI.
+The original `scripts/measure_hoop.py` remains available with the same fitter and
+JSON format. From an activated project-root terminal, pass the URI returned by
+the notebook's **Connect** cell:
+
+```text
+python scripts/measure_hoop.py --uri YOUR_DISCOVERED_URI --shape circle --name hoop-1 --output survey/hoop-1.json
+```
+
 Use `--shape circle` for a hoop or `--shape rectangle` for a rectangular gate;
 change the name and output file for each gate.
 
 Existing files are protected unless `--force`
 is supplied. Default sample spacing is 0.02 m; `--sample-spacing 0.01` retains a
-denser trace. The trace starts and stops at the laptop's Enter prompts. Move slowly
+denser trace. The CLI asks for `STOP AND SURVEY`, verifies the motor stop, then
+starts at `Command [Enter=record, q=quit]:` when you press **Enter on the laptop**.
+Press Enter again after tracing, then confirm `Fit this trace?`. Move slowly
 and watch the physical drone. The script logs position and sends no arming or flight commands;
 it sets only the firmware stop parameter before acquisition and leaves it engaged.
 Keep clear of propellers while handling. Afterwards, place the drone down and
 power-cycle it before the normal preflight checks for flight. Missing stop/status
-support prevents surveying; use checked shared geometry instead. No custom
-firmware or Docker is needed.
+support prevents surveying; use checked shared geometry.
 
-During each trace, connection loss, logging errors, invalid positions and long
+During each CLI trace, connection loss, logging errors, invalid positions and long
 sample gaps reject the acquisition, even if enough earlier points exist to fit
 a gate. The freshness limit is 0.5 s, or three requested log periods if longer.
 On a warning, stop moving and press Enter to finish the trace. The tool saves
@@ -66,6 +70,10 @@ partial observations and their failure reason under `<output-stem>-failed-traces
 beside the requested output file; these files contain no fitted gate geometry.
 An interrupted recording is saved there too. Reconnect and record a fresh trace,
 or use checked shared geometry. The firmware stop remains engaged.
+
+The notebook saves `positions.csv` and `recording.json` per capture,
+checks Lighthouse and motor status throughout, and rejects incomplete/changed
+recordings before fitting. A failed capture retains its observations and reason.
 
 ## Constraints and interface
 

@@ -1,17 +1,23 @@
 # Post-flight trajectory analysis
 
+Use the recording-analysis cells in [the trajectory notebook](../code/day3/02_trajectory.ipynb)
+to select telemetry and the exact flown course, inspect the plots inline and save
+them with the attempt. The labelled example is available when recordings are missing.
+
+## Optional command-line reference
+
 After activating the native environment, run from the project folder containing
 `code/`, `scripts/` and the requirements files:
 The following single-line command works in Bash and PowerShell.
 
 ```bash
-python scripts/plot_race.py path/to/run.csv --course path/to/approved-course.json --phase race --output plots/run --no-show
+python scripts/plot_race.py path/to/run.csv --course path/to/run.course.json --phase race --output plots/run --no-show
 ```
 
 The command writes `plots/run-trajectory.png` (3D plus XY/XZ/YZ projections) and
 `plots/run-errors.png` (signed X/Y/Z and total position errors). Omit `--no-show`
 for interactive windows. `--phase` defaults to selecting `race`, or `trajectory`
-for older recordings; `--phase all` includes takeoff and landing.
+when that is the recorded phase; `--phase all` includes takeoff and landing.
 
 The plotter is offline: it never connects to or commands a drone. Geometry and
 logs come from your team's checked course and flight, or supplied recordings.
@@ -30,7 +36,7 @@ To compare the course with separately surveyed outlines, repeat `--gate-survey`
 once per gate. This single-line command works in Bash and PowerShell:
 
 ```bash
-python scripts/plot_race.py path/to/run.csv --course path/to/approved-course.json --gate-survey survey/gate-1.json --gate-survey survey/gate-2.json --phase race --output plots/run-survey --no-show
+python scripts/plot_race.py path/to/run.csv --course path/to/run.course.json --gate-survey survey/gate-1.json --gate-survey survey/gate-2.json --phase race --output plots/run-survey --no-show
 ```
 
 Each survey file contains **one JSON object describing one gate**.

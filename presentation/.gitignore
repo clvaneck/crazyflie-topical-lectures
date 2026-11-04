@@ -1,0 +1,6 @@
+.venv/
+media/
+slides/
+talk.html
+talk_assets/
+__pycache__/

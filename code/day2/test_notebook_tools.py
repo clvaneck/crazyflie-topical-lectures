@@ -34,10 +34,11 @@ class Callbacks:
 
 
 class RawCaptureTests(unittest.TestCase):
-    def test_saves_channels_timestamps_and_default_period(self):
+    def test_saves_elapsed_seconds_across_firmware_timestamp_wrap(self):
+        timestamp_modulus = 1 << 24
         packets = [
-            (100, dict(zip(IMU_CHANNELS, (1, 2, 3, 4, 5, 6)))),
-            (120, dict(zip(IMU_CHANNELS, (7, 8, 9, 10, 11, 12)))),
+            (timestamp_modulus - 10, dict(zip(IMU_CHANNELS, (1, 2, 3, 4, 5, 6)))),
+            (10, dict(zip(IMU_CHANNELS, (7, 8, 9, 10, 11, 12)))),
         ]
 
         class FakeLogConfig:
@@ -117,10 +118,13 @@ class RawCaptureTests(unittest.TestCase):
             self.assertEqual(receipt["motor_stop_check"], {"verified": True})
             self.assertEqual(receipt["status"], "complete")
             self.assertEqual(receipt["rows"], 2)
+            self.assertEqual(receipt["timestamp_unit"], "seconds")
+            self.assertEqual(receipt["timestamp_origin"], "first firmware sample")
             with destination.open(newline="", encoding="utf-8") as stream:
                 rows = list(csv.DictReader(stream))
-            self.assertEqual(list(rows[0]), ["firmware_timestamp_ms", *IMU_CHANNELS])
-            self.assertEqual(rows[0]["firmware_timestamp_ms"], "100")
+            self.assertEqual(list(rows[0]), ["time_s", *IMU_CHANNELS])
+            self.assertEqual(rows[0]["time_s"], "0.0")
+            self.assertEqual(rows[1]["time_s"], "0.02")
             self.assertEqual(rows[1]["gyro.z"], "12.0")
             self.assertEqual(config_holder["config"].period_in_ms, 20)
             self.assertEqual(

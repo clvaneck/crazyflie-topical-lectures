@@ -135,14 +135,15 @@ Supporting files:
 * `crazyflie.py`: the radio link, logging, the two flight loops, saving and loading of runs. Also a terminal tool: `python crazyflie.py find | status | flow | recover | reboot | charge`, and for the instructors `config`, `relabel` and `channel`.
 * `drone_parameters.md`: where the simulator's parameters come from.
 * `data/reference/`: recorded sensor identification, hand test and two step flights, for the analysis without a drone.
-* `testing/`: the tests, run from this folder with `python testing/test_module.py` and `python testing/test_crazyflie.py`. The second one runs the flight loops against a fake drone and needs no hardware; it is also the check that cflib and the loops work in your environment.
+* `testing/`: the tests, run from this folder with `python testing/test_module.py` and `python testing/test_crazyflie.py`. The second one runs the flight loops against a fake drone and needs no hardware; it is also the check that cflib and the loops work in your environment. `python testing/test_tuning.py` checks the tuned controller gains of `2Dsim_03` and `2Dsim_04` against the original ones and writes comparison plots to `testing/tuning_plots/`.
 
 ## Software
 
 The simulation notebooks need numpy, scipy and matplotlib, as pinned in the
 course requirements. `2Dsim_01_keyboard_flying` and `extra_2Dsim_01_race_interactive` open a separate animated window and
 need the Qt backend, which the full installation provides through cfclient;
-all other notebooks plot inline. The flight notebooks need cflib, also part of
+all other notebooks plot inline. `2Dsim_02` to `2Dsim_05` show every run as an
+inline video (`module.render_replay`). The flight notebooks need cflib, also part of
 the full installation. The radio address of your drone follows from the label
 on its sticker, entered at the top of each flight notebook; `drone_01_connect`
 lists the drones in range and checks yours.

@@ -1,0 +1,57 @@
+{
+  "format": "vertical-sensors-v2",
+  "source": "IMU and downward ToF sensor logs",
+  "uri": "radio://0/30/2M/E7E7E7E704",
+  "units": {
+    "time_s": "seconds",
+    "gyro.x/gyro.y/gyro.z": "degrees per second",
+    "acc.x/acc.y/acc.z": "g",
+    "range.zrange": "millimetres"
+  },
+  "columns": [
+    "time_s",
+    "gyro.x",
+    "gyro.y",
+    "gyro.z",
+    "acc.x",
+    "acc.y",
+    "acc.z",
+    "range.zrange"
+  ],
+  "status": "complete",
+  "channels": [
+    "gyro.x",
+    "gyro.y",
+    "gyro.z",
+    "acc.x",
+    "acc.y",
+    "acc.z",
+    "range.zrange"
+  ],
+  "vertical_analysis_channels": [
+    "acc.x",
+    "acc.y",
+    "acc.z",
+    "range.zrange"
+  ],
+  "timing": "24-bit firmware log milliseconds, unwrapped relative to first sensor packet. Log times approximate sensor times; no delay compensation. Acceleration approximates the preceding interval.",
+  "model": "Level drone, gentle vertical motion, fixed flat floor; no onboard stateEstimate channels.",
+  "known_rest_intervals_s": [],
+  "motor_stop_check": {
+    "parameter": "stabilizer.stop",
+    "value": 1,
+    "supervisor_info": 580,
+    "motor_outputs": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "calibration_check": {
+    "acceleration_at_rest_g": 0.9996764701604843,
+    "range_std_m": 0.0014445648745444687,
+    "end_s": 5.0
+  },
+  "raw_sha256": "d8647ff66c5d77b4209e985b4c50de0be39afc49f65d4fa77f0ee6ef60d78bb1"
+}

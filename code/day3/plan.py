@@ -11,7 +11,7 @@ from .notebook_tools import checked_plan, plan_course, save_plan
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--course", type=Path, required=True, help="Course or template JSON with endpoints and agreed limits")
-    parser.add_argument("--gate-survey", action="append", type=Path, default=[], help="measure_hoop.py JSON; repeat for multiple gates")
+    parser.add_argument("--gate-survey", action="append", type=Path, default=[], help="Gate survey JSON from the notebook or CLI; repeat for multiple gates")
     parser.add_argument("--crossing", action="append", default=[], help="Survey name followed by :+ or :-; repeat in crossing order")
     parser.add_argument("--laps", type=int, default=1)
     parser.add_argument("--frame-margin", type=float, help="Physical frame/support padding beyond each opening, metres per side; overrides every gate")
@@ -37,7 +37,10 @@ def main():
         figure.savefig(args.output / "preview.png", dpi=160)
         print(f"Planned duration {trajectory.duration_s:.2f} s (excludes takeoff/landing); {len(course['hoops'])} crossings")
         print(f"Wrote disabled course, trajectory CSV, summary and preview to {args.output}")
-        print("Preview only: the qualified runner may construct a different path. Check its own dry run before flight.")
+        if course.get("trajectory_version") == 1:
+            print("Shared trajectory version 1: verify support in the common runner's dry run before flight.")
+        else:
+            print("Preview only: the qualified runner may construct a different path. Check its own dry run before flight.")
         import matplotlib.pyplot as plt
         if args.show:
             plt.show()

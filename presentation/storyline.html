@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone 4 Race Briefing Storyline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a classified mission dossier. One column of numbered sections; the run of show is a strip of cards. */
+  --paper: #eceff2;
+  --sheet: #f8f9fb;
+  --ink: #15171c;
+  --muted: #5b6270;
+  --rule: #c7ccd4;
+  --stamp: #b3261e;
+  --bar: #0a0a0b;
+  --display: "IBM Plex Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+  --body: "IBM Plex Sans", system-ui, "DejaVu Sans", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body); }
+main { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 0.95rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 14px; }
+.meta { font: 0.85rem/1.4 var(--display); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.stamp { display: inline-block; font: 600 0.8rem var(--display); color: var(--stamp); border: 2px solid var(--stamp); padding: 2px 8px; transform: rotate(-3deg); letter-spacing: 0.1em; }
+.point { background: var(--sheet); border-left: 4px solid var(--ink); padding: 18px 20px; display: grid; gap: 8px; }
+.point blockquote { margin: 0; font: 600 1.35rem/1.35 var(--display); }
+.redact { background: var(--bar); color: var(--bar); border-radius: 2px; padding: 0 0.15em; user-select: none; }
+.guess { font: 600 0.72rem var(--display); color: var(--stamp); text-transform: uppercase; letter-spacing: 0.06em; }
+.strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.card { background: var(--sheet); border: 1px solid var(--rule); padding: 14px; display: grid; gap: 8px; align-content: start; }
+.card.talk { border-top: 4px solid var(--ink); }
+.card.drone { border-top: 4px dashed var(--muted); }
+.card header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.num { font: 600 0.8rem var(--display); color: var(--muted); }
+.dur { font: 0.8rem var(--display); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card svg { width: 100%; height: 64px; }
+.card ul { margin: 0; padding-left: 18px; font-size: 0.92rem; }
+.card .say { font-size: 0.88rem; color: var(--muted); font-style: italic; }
+.total { font: 0.9rem var(--display); font-variant-numeric: tabular-nums; }
+.timeline { display: flex; height: 22px; border: 1px solid var(--ink); }
+.timeline span { display: block; height: 100%; border-right: 1px solid var(--paper); }
+.timeline .t { background: var(--ink); }
+.timeline .d { background: var(--muted); }
+.timeline .f { background: repeating-linear-gradient(45deg, var(--rule) 0 4px, transparent 4px 8px); border-right: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font: 0.8rem var(--display); color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; margin-right: 5px; }
+.wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 0.78rem var(--display); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+td code, p code, li code { font: 0.85em var(--display); background: var(--sheet); padding: 0 3px; }
+.beats { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.beat { background: var(--sheet); border: 1px solid var(--rule); padding: 16px; display: grid; gap: 10px; align-content: start; }
+.beat ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.93rem; }
+.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.icon { background: var(--sheet); border: 1px solid var(--rule); padding: 10px; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 0.82rem; }
+.icon svg { width: 100%; height: 56px; }
+.icon b { font: 600 0.8rem var(--display); }
+.qs { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+.qs li::marker { font-family: var(--display); font-weight: 600; }
+@media (max-width: 420px) { h1 { font-size: 1.5rem; } .point blockquote { font-size: 1.15rem; } }
+</style>
+</head>
+<body>
+<main>
+
+<header style="display:grid; gap:10px;">
+  <span class="stamp">DRAFT · FOR TEAM EYES</span>
+  <h1>Drone 4 race briefing: storyline</h1>
+  <div class="meta">
+    <span>Topical Lectures · Systems &amp; Control · Nikhef</span>
+    <span>Talk: Wed 4 Nov 2026, ≤ 5 min</span>
+    <span>Race: Thu 5 Nov</span>
+    <span>Built with manim-slides + manim-hep</span>
+  </div>
+  <p>Source for every number: <code>code/day2/RESULTS_day2.md</code> on branch <code>caspar-tuning</code> (commit c3be29e, 14:02 today).</p>
+</header>
+
+<section>
+  <h2>01 · The point</h2>
+  <div class="point">
+    <span class="guess">Proposal, to agree</span>
+    <blockquote>Fast where we're sure, slow where we're blind.</blockquote>
+    <p>Day 1 taught the drone to steer. Today it learned to see, and to know how sure it is of what it sees. Tomorrow that uncertainty sets our speed at every hoop.</p>
+  </div>
+</section>
+
+<section>
+  <h2>02 · Run of show</h2>
+  <div class="timeline" aria-label="Time budget: 9 sections, about 3 min 40 s of 5 min">
+    <span class="d" style="width:1.3%"></span>
+    <span class="t" style="width:3.3%"></span>
+    <span class="d" style="width:0.7%"></span>
+    <span class="t" style="width:13.3%"></span>
+    <span class="d" style="width:0.7%"></span>
+    <span class="t" style="width:25%"></span>
+    <span class="d" style="width:0.7%"></span>
+    <span class="t" style="width:25%"></span>
+    <span class="t" style="width:2.7%"></span>
+    <span class="f" style="width:27.3%"></span>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--ink)"></i>talking slide</span>
+    <span><i style="background:var(--muted)"></i>drone fly-by</span>
+    <span><i style="background:repeating-linear-gradient(45deg,var(--rule) 0 3px,transparent 3px 6px)"></i>buffer</span>
+    <span class="total">≈ 3:40 planned of 5:00</span>
+  </div>
+
+  <div class="strip">
+    <article class="card drone">
+      <header><h3>1 · B-2 fly-by</h3><span class="dur">4 s</span></header>
+      <svg viewBox="0 0 300 64" aria-label="B-2 flying wing towing a title banner">
+        <polygon points="110,32 70,8 76,17 66,20 72,26 64,32 72,38 66,44 76,47 70,56" fill="var(--ink)"/>
+        <line x1="68" y1="32" x2="40" y2="32" stroke="var(--muted)" stroke-width="1"/>
+        <path d="M4,24 Q14,20 22,24 T40,24 L40,40 Q30,44 22,40 T4,40 Z" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+      </svg>
+      <ul><li>Stealth bomber crosses left to right, title on a banner flapping behind it.</li><li>Joke 1. No talking needed.</li></ul>
+    </article>
+
+    <article class="card talk">
+      <header><h3>2 · Title</h3><span class="dur">10 s</span></header>
+      <ul><li>Banner text settles into the title card.</li><li>Team name, members, course, date.</li></ul>
+      <p class="say">“We're team ████, flying drone 4.”</p>
+    </article>
+
+    <article class="card drone">
+      <header><h3>3 · UAV fly-by</h3><span class="dur">2 s</span></header>
+      <svg viewBox="0 0 300 64" aria-label="Long-wing reconnaissance UAV">
+        <rect x="110" y="29" width="80" height="6" rx="3" fill="var(--ink)"/>
+        <rect x="146" y="4" width="8" height="56" rx="2" fill="var(--ink)"/>
+        <path d="M114,32 L104,20 M114,32 L104,44" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <ul><li>Reaper-style long-wing UAV, faster, opposite direction.</li></ul>
+    </article>
+
+    <article class="card talk">
+      <header><h3>4 · Game plan (redacted)</h3><span class="dur">40 s</span></header>
+      <ul>
+        <li>Plan types out line by line, then black bars slam over every key word.</li>
+        <li>A red REDACTED stamp lands last. Joke 2.</li>
+      </ul>
+      <p class="say">“Fly at <span class="redact">0.44</span> m/s, trust the <span class="redact">firmware</span> noise, and <span class="redact">slow down</span> when the <span class="redact">range sensor</span> drops out.”</p>
+    </article>
+
+    <article class="card drone">
+      <header><h3>5 · Drone 3 fly-by</h3><span class="dur">2 s</span></header>
+      <svg viewBox="0 0 300 64" aria-label="FPV quadcopter">
+        <path d="M130,12 L170,52 M170,12 L130,52" stroke="var(--ink)" stroke-width="4"/>
+        <circle cx="130" cy="12" r="9" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="170" cy="12" r="9" fill="none" stroke="var(--ink)" stroke-width="2"/>
+        <circle cx="130" cy="52" r="9" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="170" cy="52" r="9" fill="none" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="142" y="24" width="16" height="16" fill="var(--ink)"/>
+      </svg>
+      <ul><li>Your “Ukrainian drone”. Placeholder: an FPV quad diving across. Type to decide.</li></ul>
+    </article>
+
+    <article class="card talk">
+      <header><h3>6 · Progress 1: calibration backfired</h3><span class="dur">75 s</span></header>
+      <ul><li>We measured the IMU noise perfectly, uploaded it, and the drone flew worse.</li><li>Real flight trace from 13:04. Beats below.</li></ul>
+    </article>
+
+    <article class="card drone">
+      <header><h3>7 · Crazyflie fly-by</h3><span class="dur">2 s</span></header>
+      <svg viewBox="0 0 300 64" aria-label="Small Crazyflie quadcopter wobbling">
+        <path d="M140,22 L160,42 M160,22 L140,42" stroke="var(--ink)" stroke-width="3"/>
+        <circle cx="140" cy="22" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="160" cy="22" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+        <circle cx="140" cy="42" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="160" cy="42" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+        <path d="M100,32 q8,-6 16,0 t16,0" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      </svg>
+      <ul><li>Payoff of the running gag: after three war machines, our 27 g Crazyflie wobbles across, slowly.</li></ul>
+    </article>
+
+    <article class="card talk">
+      <header><h3>8 · Progress 2: blind means slow</h3><span class="dur">75 s</span></header>
+      <ul><li>Range sensor drops out for 3 s, the uncertainty balloons, the hoop shrinks, the speed drops.</li><li>Real recording from 13:19. Beats below.</li></ul>
+    </article>
+
+    <article class="card talk">
+      <header><h3>9 · The end</h3><span class="dur">8 s</span></header>
+      <ul><li>The B-2 returns, towing “Questions?”; the Crazyflie trails it.</li></ul>
+      <p class="say">The point line stays on screen.</p>
+    </article>
+  </div>
+</section>
+
+<section>
+  <h2>03 · The two progress slides, beat by beat</h2>
+  <div class="beats">
+    <article class="beat">
+      <h3>6 · “A perfect calibration that made it worse”</h3>
+      <ol>
+        <li><b>Measure.</b> Drone flat on the floor, 60 s at 50 Hz. Two bars on a log axis: measured accelerometer noise 0.011 m/s² against the firmware's 0.5. Label: “45× smaller”.</li>
+        <li><b>Upload and fly.</b> 0.5 m forward and back. The real trace draws itself: x overshoots to 0.81 m instead of 0.61 m; y drifts to −0.9 m while the target is 0.</li>
+        <li><b>Why.</b> At rest that is sensor noise. In the air the filter's process noise has to cover vibration, air and thrust too. With 45× too little, the filter trusts its prediction and ignores the flow deck.</li>
+        <li><b>Decision for tomorrow:</b> race on the firmware defaults.</li>
+      </ol>
+      <p class="say">Challenge in one line: the obvious fix was wrong, and only a real flight showed it.</p>
+    </article>
+    <article class="beat">
+      <h3>8 · “Blind for 3 s → slow down”</h3>
+      <ol>
+        <li><b>See.</b> Height trace with the ToF dots. The filter's band hugs the data: σ 0.11 cm.</li>
+        <li><b>Go blind.</b> The dots vanish from 8 to 11 s. The band balloons to σ 7.3 cm and the estimate wanders 10.5 cm off. The first returning reading snaps it back.</li>
+        <li><b>Shrink the hoop.</b> Face-on hoop, radius 0.5 m. Drone size, survey and tracking margins eat into it, then the 2.5σ ring. Usable clearance 0.22 m → 0.13 m.</li>
+        <li><b>Speed.</b> Gauge needle drops from 0.44 to 0.27 m/s. The point line appears.</li>
+      </ol>
+      <p class="say">Challenge in one line: the filter is honest about being unsure, so we have to listen to it.</p>
+    </article>
+  </div>
+</section>
+
+<section>
+  <h2>04 · Icons and visual language</h2>
+  <p>All drawn from manim primitives (polygons, circles, lines): no downloaded art, so no licences and one consistent line style. Dark slides for the projector, one accent colour, DejaVu Sans from manim-hep.</p>
+  <div class="icons">
+    <div class="icon"><svg viewBox="0 0 120 56"><polygon points="60,6 112,40 98,48 86,42 74,50 60,44 46,50 34,42 22,48 8,40" fill="var(--ink)"/></svg><b>B-2</b>flying wing, sawtooth trailing edge</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><rect x="20" y="25" width="80" height="6" rx="3" fill="var(--ink)"/><rect x="56" y="2" width="8" height="52" rx="2" fill="var(--ink)"/><path d="M24,28 L14,16 M24,28 L14,40" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/></svg><b>UAV</b>long straight wing, V-tail</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><path d="M40,8 L80,48 M80,8 L40,48" stroke="var(--ink)" stroke-width="4"/><circle cx="40" cy="8" r="7" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="80" cy="8" r="7" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="40" cy="48" r="7" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="80" cy="48" r="7" fill="none" stroke="var(--ink)" stroke-width="2"/></svg><b>Drone 3</b>FPV quad (to decide)</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><path d="M50,18 L70,38 M70,18 L50,38" stroke="var(--ink)" stroke-width="3"/><circle cx="50" cy="18" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="70" cy="18" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="50" cy="38" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><circle cx="70" cy="38" r="6" fill="none" stroke="var(--ink)" stroke-width="1.5"/><text x="60" y="31" font-size="7" text-anchor="middle" font-family="IBM Plex Mono" fill="var(--ink)">4</text></svg><b>Crazyflie</b>our drone, label 4</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><circle cx="60" cy="28" r="24" fill="none" stroke="var(--ink)" stroke-width="3"/><circle cx="64" cy="30" r="9" fill="none" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2"/><circle cx="64" cy="30" r="2" fill="var(--ink)"/></svg><b>Hoop</b>face-on, drone + 2.5σ ring</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><rect x="10" y="12" width="44" height="12" fill="var(--bar)"/><rect x="62" y="12" width="48" height="12" fill="var(--bar)"/><rect x="10" y="32" width="64" height="12" fill="var(--bar)"/><text x="88" y="46" font-size="10" font-family="IBM Plex Mono" font-weight="600" fill="var(--stamp)" transform="rotate(-8 88 42)">REDACTED</text></svg><b>Redaction</b>black bars + red stamp</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><path d="M4,30 L40,30 C50,30 54,10 60,10 C66,10 70,50 80,50 L116,30" fill="none" stroke="var(--muted)" stroke-width="1"/><path d="M4,28 L40,28 Q60,6 80,28 L116,28 L116,32 L80,32 Q60,52 40,32 L4,32 Z" fill="var(--rule)"/><path d="M4,30 L116,30" stroke="var(--ink)" stroke-width="2"/></svg><b>σ band</b>grows while blind</div>
+    <div class="icon"><svg viewBox="0 0 120 56"><path d="M24,50 A36,36 0 0 1 96,50" fill="none" stroke="var(--ink)" stroke-width="3"/><line x1="60" y1="50" x2="42" y2="24" stroke="var(--stamp)" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="50" r="3" fill="var(--ink)"/></svg><b>Speed gauge</b>0.44 → 0.27 m/s</div>
+  </div>
+</section>
+
+<section>
+  <h2>05 · Numbers on screen</h2>
+  <p>All from <code>code/day2/RESULTS_day2.md</code>. The traces are the real recordings in <code>code/day2/results/</code>, not redrawn by hand.</p>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Slide</th><th>Value</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>6</td><td>Accelerometer noise at rest 0.011 m/s² vs firmware <code>pNAcc_xy</code> 0.5 (≈ 45×)</td><td>E2 table, run 13:00</td></tr>
+        <tr><td>6</td><td>Flight: x reaches 0.81 m (target 0.61 m); y drifts ≈ 0.9 m at ≈ 10 cm/s</td><td>E2 flight 13:04, <code>results/E2/flight/*_state.csv</code></td></tr>
+        <tr><td>8</td><td>Height σ 0.11 cm → 7.3 cm after 3 s without range; error +10.5 cm; back to 0.17 cm on the first reading</td><td>E5A, recording <code>capture-131904</code></td></tr>
+        <tr><td>8</td><td>Clearance 0.220 m → 0.134 m, speed 0.44 → 0.27 m/s (vertical opening)</td><td>E7. Lag 0.25 s and horizontal σ 0.04 m are assumed, not measured: show as small print</td></tr>
+        <tr><td>spare</td><td>Accelerometer integration alone drifts to 73 cm while the drone sat at 8 cm</td><td>E3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>06 · Spare material (if a slide needs swapping)</h2>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Topic</th><th>One-liner</th></tr></thead>
+      <tbody>
+        <tr><td>χ² outlier gate</td><td>A fake +15 cm reading: ungated the speed jumps to +34 cm/s, gated it is ignored. Too strict (α = 0.2) and the filter stops listening: 271 of 301 good readings rejected.</td></tr>
+        <tr><td>Bias as a third state</td><td>A 0.05 m/s² offset the rest calibration missed: 2-state + gate runs away by 190 cm, the 3-state filter stays within 7 cm.</td></tr>
+        <tr><td>The abort-window bug</td><td>On macOS the abort window crashed, VS Code's input box answered by itself, and every flight aborted right after take-off. Fixed in <code>crazyflie.py</code>.</td></tr>
+        <tr><td>Crowded radio</td><td>Drones 0 and 5 of other groups nearby: “too many packets lost”, repeat the recording.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>07 · How it gets built and shown</h2>
+  <ul style="margin:0; padding-left:20px; display:grid; gap:6px; max-width:72ch;">
+    <li>One file <code>talk.py</code>, one manim-slides <code>Slide</code> per section (9). Each pause point is a click.</li>
+    <li>Present from the laptop: <code>manim-slides present Flyby Title …</code>, full screen, → to advance; hold slides loop quietly.</li>
+    <li>Also delivered: one MP4 per section, and a <code>manim-slides convert --to=html</code> backup that plays in any browser.</li>
+    <li>Rendered at 1080p30 to keep render time short. Environment: a uv venv with manim, manim-slides and manim-hep (ffmpeg and LaTeX are already installed).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>08 · Open: yours to decide</h2>
+  <ol class="qs">
+    <li>The point line, and the two progress picks (calibration backfire; blind means slow).</li>
+    <li>Title text on the banner, team name and members.</li>
+    <li>The real game-plan lines behind the black bars.</li>
+    <li>Drone 3: which type. A Ukrainian war drone is topical; some in the room may find it close to the bone, so a generic FPV quad is the safe version.</li>
+    <li>Presenting from your laptop, or MP4s on the room PC.</li>
+  </ol>
+</section>
+
+</main>
+</body>
+</html>

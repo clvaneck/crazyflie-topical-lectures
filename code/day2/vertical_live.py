@@ -15,10 +15,11 @@ import time
 
 from race_common.motor_stop import ACTIVE_BITS, LOCKED_BIT, MOTOR_CHANNELS
 from notebook_radio import motor_stopped_connection
-from .vertical import RAW_COLUMNS, calibrate, load_raw
+from .vertical import (LIVE_COLUMNS, LIVE_SENSOR_COLUMNS,
+                       VERTICAL_SENSOR_COLUMNS, calibrate, load_raw)
 
 
-SENSOR_CHANNELS = ('acc.x', 'acc.y', 'acc.z', 'range.zrange')
+SENSOR_CHANNELS = LIVE_SENSOR_COLUMNS
 STATUS_CHANNELS = ('supervisor.info', *MOTOR_CHANNELS)
 
 
@@ -41,9 +42,11 @@ def collect(output, uri, duration_s=20):
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    metadata = {"format": "vertical-sensors-v1", "source": "accelerometer and downward ToF sensor logs", "uri": uri,
-                "units": {"time_s": "seconds", "acc_x_g/acc_y_g/acc_z_g": "g", "range_mm": "millimetres"},
-                "columns": list(RAW_COLUMNS), "status": "recording", "channels": list(SENSOR_CHANNELS),
+    metadata = {"format": "vertical-sensors-v2", "source": "IMU and downward ToF sensor logs", "uri": uri,
+                "units": {"time_s": "seconds", "gyro.x/gyro.y/gyro.z": "degrees per second",
+                          "acc.x/acc.y/acc.z": "g", "range.zrange": "millimetres"},
+                "columns": list(LIVE_COLUMNS), "status": "recording", "channels": list(SENSOR_CHANNELS),
+                "vertical_analysis_channels": list(VERTICAL_SENSOR_COLUMNS),
                 "timing": "24-bit firmware log milliseconds, unwrapped relative to first sensor packet. Log times approximate sensor times; no delay compensation. Acceleration approximates the preceding interval.",
                 "model": "Level drone, gentle vertical motion, fixed flat floor; no onboard stateEstimate channels.",
                 "known_rest_intervals_s": []}
@@ -68,7 +71,7 @@ def collect(output, uri, duration_s=20):
     try:
         with (output / 'raw.csv').open('x', newline='', encoding='utf-8') as stream:
             writer = csv.writer(stream)
-            writer.writerow(RAW_COLUMNS)
+            writer.writerow(LIVE_COLUMNS)
             with motor_stopped_connection(uri, output / '.cflib-cache') as (connection, stop_check):
                 cf = connection.cf
                 metadata['motor_stop_check'] = stop_check
@@ -81,9 +84,17 @@ def collect(output, uri, duration_s=20):
                 try:
                     # Separate packets keep both logs within the firmware payload limit.
                     for name, channels in (('status', STATUS_CHANNELS), ('sensors', SENSOR_CHANNELS)):
+                        elements = {
+                            channel: cf.log.toc.get_element_by_complete_name(channel)
+                            for channel in channels
+                        }
+                        missing = [channel for channel, element in elements.items()
+                                   if element is None]
+                        if missing:
+                            raise ValueError("Required log channels missing: " + ', '.join(missing))
                         log = LogConfig(name='Vertical_' + name, period_in_ms=50)
-                        for channel in channels:
-                            log.add_variable(channel, 'uint16_t' if channel == 'supervisor.info' else 'float')
+                        for channel, element in elements.items():
+                            log.add_variable(channel, element.ctype)
                         cf.log.add_config(log)
                         configs.append(log)
                         log.data_received_cb.add_callback(receive(name))
@@ -120,11 +131,11 @@ def collect(output, uri, duration_s=20):
                             unwrapped_ms = previous_ms + delta
                         previous_ms = unwrapped_ms
                         t = (unwrapped_ms - origin) / 1000
-                        row = [t, *(float(data[name]) for name in SENSOR_CHANNELS)]
-                        if not all(math.isfinite(value) for value in row):
+                        capture_row = [t, *(float(data[name]) for name in SENSOR_CHANNELS)]
+                        if not all(math.isfinite(value) for value in capture_row):
                             raise ValueError("Non-finite sensor measurement.")
-                        rows.append(row)
-                        writer.writerow(row)
+                        rows.append([t, *(float(data[name]) for name in VERTICAL_SENSOR_COLUMNS)])
+                        writer.writerow(capture_row)
                         stream.flush()
                         if t >= 5 and not calibrated:
                             calibration = calibrate(np.asarray(rows))

@@ -28,6 +28,7 @@ from race_common.hoop_fit import (  # noqa: E402
     fit_circle_3d,
     fit_rectangle_3d,
 )
+from day3.survey import spatially_subsample, write_gate  # noqa: E402
 
 
 class PositionSampler:
@@ -155,24 +156,7 @@ def _write_result(
     points: list[np.ndarray],
     force: bool,
 ) -> None:
-    if path.exists() and not force:
-        raise FileExistsError(f"{path} already exists; use --force to replace it")
-    result = {
-        "name": hoop_name,
-        "centre": _rounded(fit.centre),
-        "normal": _rounded(fit.normal),
-        "radius_m": round(fit.radius_m, 6),
-        "survey": {
-            "point_count": len(points),
-            "plane_rms_m": round(fit.plane_rms_m, 6),
-            "plane_max_m": round(fit.plane_max_m, 6),
-            "radial_rms_m": round(fit.radial_rms_m, 6),
-            "radial_max_m": round(fit.radial_max_m, 6),
-            "points_m": [_rounded(point) for point in points],
-        },
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    write_gate(path, hoop_name, fit, points, force)
 
 
 def _write_rectangle_result(
@@ -182,30 +166,7 @@ def _write_rectangle_result(
     points: list[np.ndarray],
     force: bool,
 ) -> None:
-    if path.exists() and not force:
-        raise FileExistsError(f"{path} already exists; use --force to replace it")
-    result = {
-        "name": gate_name,
-        "shape": "rectangle",
-        "centre": _rounded(fit.centre),
-        "normal": _rounded(fit.normal),
-        "width_axis": _rounded(fit.width_axis),
-        "height_axis": _rounded(fit.height_axis),
-        "width_m": round(fit.width_m, 6),
-        "height_m": round(fit.height_m, 6),
-        # Existing circular race logic can consume this conservative fallback.
-        "radius_m": round(min(fit.width_m, fit.height_m) / 2.0, 6),
-        "survey": {
-            "point_count": len(points),
-            "plane_rms_m": round(fit.plane_rms_m, 6),
-            "plane_max_m": round(fit.plane_max_m, 6),
-            "outline_rms_m": round(fit.outline_rms_m, 6),
-            "outline_max_m": round(fit.outline_max_m, 6),
-            "points_m": [_rounded(point) for point in points],
-        },
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    write_gate(path, gate_name, fit, points, force)
 
 
 def _interactive_survey(
@@ -270,11 +231,7 @@ def _spatially_subsample(points: np.ndarray, minimum_spacing_m: float) -> np.nda
     """Keep samples separated in space, reducing dwell-time weighting."""
     if len(points) == 0:
         return np.empty((0, 3))
-    retained = [points[0]]
-    for point in points[1:]:
-        if np.linalg.norm(point - retained[-1]) >= minimum_spacing_m:
-            retained.append(point)
-    return np.asarray(retained)
+    return spatially_subsample(points, minimum_spacing_m)
 
 
 def parse_args() -> argparse.Namespace:

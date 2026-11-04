@@ -1694,7 +1694,8 @@ def start_abort(title='Crazyflie: Enter lands the drone', on_stop=None):
     """Enter lands the drone: a small window where one can open, the input box of the notebook otherwise.
 
     The window comes from the Qt that matplotlib uses, like the keyboard flying
-    of the simulator, and the flight loop pumps its events itself, so nothing
+    of the simulator, on macOS from matplotlib's native backend instead, and
+    the flight loop pumps its events itself, so nothing
     goes through the notebook's stdin and the printout of the cell stays live
     in every frontend. Enter, Escape, the button and closing the window set the
     Event. Without a window (no Qt, no display, ABORT_WINDOW = False) input()
@@ -1708,8 +1709,11 @@ def start_abort(title='Crazyflie: Enter lands the drone', on_stop=None):
     stop = threading.Event()
     has_display = sys.platform != 'linux' or os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')
     if ABORT_WINDOW and has_display:
+        # On macOS the native window of matplotlib: a Qt that cannot load its
+        # platform plugin kills the process, which no except can catch.
+        window = _abort_window_macosx if sys.platform == 'darwin' else _abort_window
         try:
-            pump, close = _abort_window(stop, title, on_stop)
+            pump, close = window(stop, title, on_stop)
         except Exception as exc:                  # no Qt binding, no display
             print('no abort window (%s: %s); the input box of the notebook takes Enter instead'
                   % (type(exc).__name__, exc))
@@ -1719,9 +1723,19 @@ def start_abort(title='Crazyflie: Enter lands the drone', on_stop=None):
             return abort
 
     def _listen():
-        try:
-            input('press Enter to ABORT and land: ')
-        except Exception:
+        for _attempt in range(3):
+            t_open = time.monotonic()
+            try:
+                input('press Enter to ABORT and land: ')
+            except Exception:
+                return
+            # Some frontends (VS Code) hand a stale or empty answer back at once:
+            # an Enter within a second of opening the box is not a real abort.
+            if time.monotonic() - t_open >= 1.0:
+                break
+            time.sleep(0.2)
+        else:
+            print('the input box answers by itself: only the kernel interrupt lands the drone')
             return
         stop.set()
         if on_stop is not None:
@@ -1784,6 +1798,61 @@ def _abort_window(stop, title, on_stop=None):
         state['closing'] = True
         window.close()
         app.processEvents()
+
+    return pump, close
+
+
+def _abort_window_macosx(stop, title, on_stop=None):
+    """The abort window with matplotlib's native macOS backend: Enter, Escape, a click or closing it set `stop`."""
+    from matplotlib.backends.backend_macosx import FigureCanvasMac
+    from matplotlib.figure import Figure
+
+    fig = Figure(figsize=(5.0, 1.9))
+    manager = FigureCanvasMac.new_manager(fig, 9001)    # the number is the window id, it must be an int
+    canvas = fig.canvas
+    for cid in (getattr(manager, 'key_press_handler_id', None), getattr(manager, 'button_press_handler_id', None)):
+        if cid is not None:
+            canvas.mpl_disconnect(cid)          # no save dialog on 's', no fullscreen on 'f'
+    manager.set_window_title(title)
+    fig.text(0.5, 0.72, 'ENTER LANDS THE DRONE', ha='center', va='center', fontsize=20, weight='bold')
+    status = fig.text(0.5, 0.32, 'Click into this window, so that it takes the keys.', ha='center', va='center',
+                      fontsize=12, wrap=True)
+    state = {'closing': False}
+
+    def request(*_args):
+        if stop.is_set():
+            return
+        stop.set()
+        status.set_text('ABORT: landing as soon as possible')
+        canvas.draw_idle()
+        if on_stop is not None:
+            on_stop()
+
+    def on_key(event):
+        if event.key in ('enter', 'escape'):
+            request()
+
+    def on_close(_event):
+        if not state['closing']:
+            request()
+
+    canvas.mpl_connect('key_press_event', on_key)
+    canvas.mpl_connect('button_press_event', request)
+    canvas.mpl_connect('close_event', on_close)
+    manager.show()
+    canvas.draw()
+    canvas.flush_events()
+
+    def pump(text=None):
+        if text is not None and not stop.is_set():
+            status.set_text(text)
+            canvas.draw_idle()
+        canvas.flush_events()
+
+    def close():
+        state['closing'] = True
+        manager.destroy()
+        canvas.flush_events()
 
     return pump, close
 
@@ -2222,14 +2291,23 @@ def fly(controller, axes='x', step=0.5, z_hold=0.5, hold_s=2.0, step_s=4.0,
             'info': dict(info or {})}
 
 
+def _describe_move(move):
+    return ' '.join('%g' % v if isinstance(v, (int, float)) else str(v) for v in move)
+
+
 def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop_dt=0.02, fence=1.5,
-             stop_event=None, hover_s=2.0, info=None):
+             stop_event=None, hover_s=2.0, info=None, z_min=0.2, z_max=1.5):
     """Fly a simple path under the drone's own controllers, logged like a flight of fly().
 
     `moves` is a list of (what, how much): ('forward', 0.5), ('back', 0.5),
     ('left', 0.5), ('right', 0.5) in metres in the frame of the drone,
     ('up', 0.2) and ('down', 0.2) in metres, ('turn', 90) in degrees, positive
-    to the left, ('hold', 2.0) in seconds. The drone takes off to `z`, hovers
+    to the left, ('hold', 2.0) in seconds, and ('helix', radius, height, turns):
+    forward at `speed` while turning, a circle of `radius` metres, to the left
+    for a positive radius, climbing `height` metres (negative descends) over
+    `turns` turns. The climb is at most 0.2 m/s, the speed along the circle
+    drops if it needs longer. The height of the path must stay between z_min
+    and z_max, checked before the take-off. The drone takes off to `z`, hovers
     hover_s, flies the moves at `speed` m/s and turn_rate deg/s, holds hold_s
     and lands. All control is on board: the MotionCommander sends velocity
     setpoints, the position loop of the firmware follows them.
@@ -2252,9 +2330,19 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
         if abort is not None:
             abort.pump(text)
 
-    for what, _amount in moves:
-        if what not in ('forward', 'back', 'left', 'right', 'up', 'down', 'turn', 'hold'):
-            raise DroneError('unknown move %r; use forward, back, left, right, up, down, turn or hold' % (what,))
+    height = z
+    for move in moves:
+        what = move[0]
+        if what not in ('forward', 'back', 'left', 'right', 'up', 'down', 'turn', 'hold', 'helix'):
+            raise DroneError('unknown move %r; use forward, back, left, right, up, down, turn, hold or helix' % (what,))
+        if len(move) != (4 if what == 'helix' else 2):
+            raise DroneError('move %r: use (%r, %s)' % (move, what, 'radius, height, turns' if what == 'helix' else 'amount'))
+        if what == 'helix' and (move[1] == 0 or move[3] <= 0):
+            raise DroneError('helix %r: the radius must not be 0 and the turns must be positive' % (move,))
+        height += {'up': move[1], 'down': -move[1], 'helix': move[2] if what == 'helix' else 0}.get(what, 0)
+        if not z_min <= height <= z_max:
+            raise DroneError('the path reaches %.2f m height at %r, outside %.2f to %.2f m'
+                             % (height, _describe_move(move), z_min, z_max))
     abort = start_abort('Crazyflie %s: Enter lands the drone' % drone_label(uri),
                         on_stop=lambda: print('[%4.1f s] ABORT requested, landing as soon as possible'
                                              % (time.monotonic() - t_cell))) if stop_event is None else None
@@ -2313,8 +2401,10 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
                            % (sensor_rows[-1]['range.zrange'] / 1000.0, z))
             heading = 0.0                       # the drone's forward at take-off is +x of the room
             planned = [x0, y0]
-            segments = [('hold', 1.0, 0)] + [(what, amount, 1) for what, amount in moves] + [('hold', hold_s, 1)]
-            stage('path starts at x %.2f m, y %.2f m: %s' % (x0, y0, ', '.join('%s %g' % m for m in moves)))
+            height = z                          # as commanded, for the landing
+            segments = ([('hold', 1.0, 0)] + [(m[0], m[1] if len(m) == 2 else m[1:], 1) for m in moves]
+                        + [('hold', hold_s, 1)])
+            stage('path starts at x %.2f m, y %.2f m: %s' % (x0, y0, ', '.join(_describe_move(m) for m in moves)))
             try:
                 t_start = time.monotonic()
                 next_tick = t_start
@@ -2334,13 +2424,21 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
                     elif what == 'turn':
                         yaw_rate = turn_rate if amount >= 0 else -turn_rate
                         duration = abs(amount) / turn_rate
+                    elif what == 'helix':
+                        radius, climb, turns = amount
+                        arc = 2 * math.pi * abs(radius) * turns
+                        duration = max(arc / speed, abs(climb) / 0.2)
+                        body_v = (arc / duration, 0.0)
+                        v_z = climb / duration
+                        yaw_rate = math.degrees(body_v[0] / radius)    # positive radius: to the left
                     else:
                         duration = float(amount)
                     if what == 'turn':
                         (mc.start_turn_left if amount >= 0 else mc.start_turn_right)(turn_rate)
                     else:
-                        mc.start_linear_motion(body_v[0], body_v[1], v_z)
-                    t_end = time.monotonic() + duration
+                        mc.start_linear_motion(body_v[0], body_v[1], v_z, yaw_rate)
+                    t_segment = time.monotonic()
+                    t_end = t_segment + duration
                     while time.monotonic() < t_end:
                         now = time.monotonic()
                         if pump is not None:
@@ -2381,6 +2479,7 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
                         heading += math.radians(yaw_rate) * loop_dt
                         next_tick += loop_dt
                         time.sleep(max(0.0, next_tick - time.monotonic()))
+                    height += v_z * (min(time.monotonic(), t_end) - t_segment)
                     if aborted:
                         break
             except KeyboardInterrupt:
@@ -2391,7 +2490,7 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
                     mc.start_linear_motion(0.0, 0.0, 0.0)
                     time.sleep(0.5)
                     stage('landing')
-                    land_gently(mc, from_height=z)
+                    land_gently(mc, from_height=height)
                 finally:
                     restore()
 
@@ -2407,7 +2506,7 @@ def fly_path(moves, uri=None, z=0.5, speed=0.3, turn_rate=45.0, hold_s=2.0, loop
         print('landed. Press Enter once to close the input box; the flight is over, Enter does nothing else now')
     return {'rows': rows, 'flight': flight, 'aborted': aborted, 'axes': 'xy', 'step': 0.0, 'v_max': speed,
             'uri': uri, 'time': started, 'drone': drone_label(uri), 'path': list(moves),
-            'info': dict(info or {}, speed=speed, z=z, moves='; '.join('%s %s' % m for m in moves))}
+            'info': dict(info or {}, speed=speed, z=z, moves='; '.join(_describe_move(m) for m in moves))}
 
 
 def land_gently(mc, from_height, low=0.1, approach_velocity=0.3, final_velocity=0.2):

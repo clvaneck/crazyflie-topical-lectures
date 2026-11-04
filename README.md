@@ -84,7 +84,7 @@ describe these responsibilities and when to stop.
 
 ## About this release
 
-Release **0.1.8** contains exercises, theory notes, starter code, setup
+Release **0.1.11** contains exercises, theory notes, starter code, setup
 scripts, and offline trajectory analysis. Organizers provide any tested
 flight fallback and recordings separately. The starter does not implement a
 complete flight runner. Package versions are pinned for reproducible experiments.

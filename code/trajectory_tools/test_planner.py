@@ -13,7 +13,7 @@ import numpy as np
 from scipy.interpolate import BPoly
 
 from .course import construct_course, crossing_region, gate_outline, read_json, validate_course
-from .planner import Trajectory, build_trajectory, validate_crossings
+from .planner import Trajectory, _derivative_bound, build_trajectory, validate_crossings
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,6 +39,18 @@ class PlannerTests(unittest.TestCase):
         for gate, time in zip(course["hoops"], trajectory.crossing_times_s):
             np.testing.assert_allclose(spline(time), gate["centre"], atol=1e-12)
             self.assertGreater(spline(time, 1) @ gate["normal"], 0)
+
+    def test_subdivided_derivative_hulls_retain_continuous_bounds(self):
+        random = np.random.default_rng(19)
+        for _ in range(20):
+            spline = BPoly(random.normal(size=(6, 4, 3)), [0, 1, 2.5, 4, 6])
+            times = np.linspace(0, 6, 4001)
+            for order in (1, 2):
+                coarse = _derivative_bound(spline, order, 0)
+                refined = _derivative_bound(spline, order, 2)
+                sampled = float(np.linalg.norm(spline(times, order), axis=1).max())
+                self.assertLessEqual(refined, coarse + 1e-10)
+                self.assertLessEqual(sampled, refined + 1e-10)
 
     def test_repeated_forward_return_laps_keep_source_and_disable_flight(self):
         self.template["enabled_for_flight"] = True

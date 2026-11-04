@@ -1,16 +1,18 @@
 # Day 3: race
 
-Start `jupyter lab` from the project root and open
-[day3_race.ipynb](day3_race.ipynb) in the file browser, using
-**Crazyflie lectures (.venv)**.
+Start `jupyter lab` from the project root, using **Crazyflie lectures (.venv)**.
+In the file browser, open [01_survey.ipynb](01_survey.ipynb) to record and fit
+gates, then [02_trajectory.ipynb](02_trajectory.ipynb) to plan and analyse the race.
+Use [03_flight.ipynb](03_flight.ipynb) on the flight laptop for the tested
+runner's dry run and flight launch, with explicit readiness and course confirmation.
 
-The notebook is the main route: check shared gates, choose margins from Day 1
-tracking and Day 2 covariance, compare one speed change, then analyse a recording.
-Prefer actual telemetry; the labelled delayed-reference example also works offline.
-Choose a fresh `run_id` for another full session.
+Use Day 1 tracking and Day 2 covariance for margins. Submit baseline and optimized
+course/tuning configurations for the common runner; compare one bounded PID-gain
+change at fixed course/speed. Kalman tuning is optional. Saved examples work offline.
 For surveying, set `LABEL` to your drone's sticker label and confirm the blinking
-drone. The notebook verifies the firmware stop and prints the survey command.
-Power-cycle after handling and repeat preflight before flight.
+drone. Capture runs in the notebook after verified firmware stop, with a timed
+preparation interval and trace. Saved recordings and simulated outlines work offline.
+In the flight notebook, power-cycle after identification and repeat preflight.
 
 ## Optional command-line route
 
@@ -25,6 +27,5 @@ Use `--help` for measured surveys and crossing order.
 The [planner reference](../../docs/trajectory_construction.md) gives mathematics,
 limitations and optional extensions.
 
-Day 2 E7's uncertainty example is also available from `code/`:
-`python -m day3.uncertainty --scenario dropout`. Its speed recommendation does
-not change the prescribed motion.
+The optional [uncertainty notebook](04_extra_uncertainty.ipynb) has an editable
+speed policy with fixed simulated motion.

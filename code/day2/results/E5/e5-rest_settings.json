@@ -1,0 +1,122 @@
+{
+  "settings": {
+    "without-constraint": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.005322473725433021,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": 0.010265287806649852,
+        "pre_gate_pull_std": 0.9376684340216244,
+        "rejected": 0,
+        "rmse_height_velocity": [
+          0.0020843461747599053,
+          0.009366957109434096
+        ],
+        "marginal_95_percent_coverage": [
+          1.0,
+          0.9961685823754789
+        ]
+      }
+    },
+    "known-rest": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.005322473725433021,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [
+        [
+          16.0,
+          19.0
+        ]
+      ],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": 0.021055780193214357,
+        "pre_gate_pull_std": 0.9327449262293348,
+        "rejected": 0,
+        "rmse_height_velocity": [
+          0.0019140069592664209,
+          0.008653111925622983
+        ],
+        "marginal_95_percent_coverage": [
+          1.0,
+          0.9961685823754789
+        ]
+      }
+    },
+    "false-rest": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.005322473725433021,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [
+        [
+          8.0,
+          9.0
+        ]
+      ],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": 0.12699900189423977,
+        "pre_gate_pull_std": 1.0394283758787384,
+        "rejected": 0,
+        "rmse_height_velocity": [
+          0.002920658601879845,
+          0.012145467494941518
+        ],
+        "marginal_95_percent_coverage": [
+          0.9157088122605364,
+          0.9272030651340997
+        ]
+      }
+    }
+  },
+  "calibration": {
+    "acceleration_at_rest_g": 1.0040777101282294,
+    "range_std_m": 0.005322473725433021,
+    "end_s": 5.0
+  },
+  "source": {
+    "source": "simulation",
+    "seed": 0,
+    "status": "complete",
+    "sensor_assumptions": {
+      "acceleration_at_rest_g": 1.0040788648519117,
+      "acceleration_std_m_s2": 0.06,
+      "range_std_m": 0.005
+    },
+    "known_rest_intervals_s": [
+      [
+        0,
+        5
+      ],
+      [
+        15,
+        20.0
+      ]
+    ],
+    "timing": "Simulated measurement times; acceleration approximates the preceding interval.",
+    "input_sha256": "c6514a4c37af5b32940766022e9fab6171301e695698d343b92984b785fb5d92"
+  },
+  "notes": "",
+  "processed_input_sha256": "8b74586cee3cc01c4ef4546374ec6c574ae2bfbaa8dd0b4b8e1ed3df1c89e767",
+  "limitations": "Bands are model uncertainty, not independent accuracy evidence. Level drone and fixed floor assumed."
+}

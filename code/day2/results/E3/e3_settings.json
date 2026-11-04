@@ -1,0 +1,142 @@
+{
+  "settings": {
+    "baseline": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.0016846304633301044,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": -0.051817673078488696,
+        "pre_gate_pull_std": 1.005768719401863,
+        "rejected": 0
+      }
+    },
+    "V-small": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.0005327269279827895,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": -0.05992776115591927,
+        "pre_gate_pull_std": 2.8496951721209416,
+        "rejected": 0
+      }
+    },
+    "V-large": {
+      "filter": {
+        "acceleration_std_m_s2": 0.1,
+        "range_std_m": 0.005327269279827896,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": -0.04136203065182524,
+        "pre_gate_pull_std": 0.38467080448412894,
+        "rejected": 0
+      }
+    },
+    "Q-candidate": {
+      "filter": {
+        "acceleration_std_m_s2": 0.08,
+        "range_std_m": 0.0016846304633301044,
+        "initial_height_std_m": 0.02,
+        "initial_velocity_std_m_s": 0.1,
+        "stationary_velocity_std_m_s": 0.02
+      },
+      "range_gap_s": null,
+      "stationary_intervals_s": [],
+      "gate_threshold": null,
+      "false_rejection_probability": 0.01,
+      "summary": {
+        "pre_gate_pull_mean": -0.0620752627554065,
+        "pre_gate_pull_std": 1.0317218153910739,
+        "rejected": 0
+      }
+    }
+  },
+  "calibration": {
+    "acceleration_at_rest_g": 0.9994684273004532,
+    "range_std_m": 0.0016846304633301044,
+    "end_s": 5.0
+  },
+  "source": {
+    "format": "vertical-sensors-v2",
+    "source": "IMU and downward ToF sensor logs",
+    "uri": "radio://0/30/2M/E7E7E7E704",
+    "units": {
+      "time_s": "seconds",
+      "gyro.x/gyro.y/gyro.z": "degrees per second",
+      "acc.x/acc.y/acc.z": "g",
+      "range.zrange": "millimetres"
+    },
+    "columns": [
+      "time_s",
+      "gyro.x",
+      "gyro.y",
+      "gyro.z",
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "status": "complete",
+    "channels": [
+      "gyro.x",
+      "gyro.y",
+      "gyro.z",
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "vertical_analysis_channels": [
+      "acc.x",
+      "acc.y",
+      "acc.z",
+      "range.zrange"
+    ],
+    "timing": "24-bit firmware log milliseconds, unwrapped relative to first sensor packet. Log times approximate sensor times; no delay compensation. Acceleration approximates the preceding interval.",
+    "model": "Level drone, gentle vertical motion, fixed flat floor; no onboard stateEstimate channels.",
+    "known_rest_intervals_s": [],
+    "motor_stop_check": {
+      "parameter": "stabilizer.stop",
+      "value": 1,
+      "supervisor_info": 580,
+      "motor_outputs": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "calibration_check": {
+      "acceleration_at_rest_g": 0.9994684273004532,
+      "range_std_m": 0.0016846304633301044,
+      "end_s": 5.0
+    },
+    "raw_sha256": "e7eeed3a7f317a880a4bfec160dbfafef770f71026d1a85a7b51a2fc812c4b71",
+    "input_sha256": "5a2317af9d7fff9d5f3799c948c35060ca870ad3e7ae2be18825c90781b49044"
+  },
+  "notes": "",
+  "processed_input_sha256": "a8e3cf837129f8f6df96902e89f9e8ccd51737e3eec08fd912b75e3eb19f1ff7",
+  "limitations": "Bands are model uncertainty, not independent accuracy evidence. Level drone and fixed floor assumed."
+}

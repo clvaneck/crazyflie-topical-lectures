@@ -13,7 +13,7 @@ instructions.
 | --- | --- | --- |
 | 1 | [Feedback control](day_1_control.md) | [Notebook guide](../code/day1/README.md) |
 | 2 | [Kalman filtering](day_2_kalman.md) | [Numbered notebooks](../code/day2/README.md) |
-| 3 | [Race](day_3_race.md) | [Day 3 notebook](../code/day3/day3_race.ipynb) |
+| 3 | [Race](day_3_race.md) | [Survey](../code/day3/01_survey.ipynb), [planning/analysis](../code/day3/02_trajectory.ipynb), [flight](../code/day3/03_flight.ipynb) |
 
 Keep one shared team notebook or notes file, at most one page per day plus
 links to saved outputs. The [shared conventions](practical_workflow.md) cover

@@ -23,20 +23,31 @@ from .notebook_tools import (_run_capture, capture_vertical, simulated_imu_pair,
 from race_common.motor_stop import LOCKED_BIT
 
 
+def completed_notebook_filter():
+    """Fill the four exercise expressions and execute the notebook's own scaffolding."""
+    notebook = json.loads(Path(__file__).with_name('03_height_velocity.ipynb').read_text())
+    cells = {cell['id']: ''.join(cell['source']) for cell in notebook['cells']}
+    namespace = {'np': np, 'vertical': v}
+    mechanics = cells['day2-mechanics']
+    # B maps a one-element acceleration vector to a two-element state. H, R,
+    # K and the residual use matrix shapes in the measurement update.
+    for name, expression in {
+        'x_predicted': 'F @ x + B @ acceleration',
+        'C_predicted': 'F @ C @ F.T + Q',
+        'K': 'C_predicted @ H.T @ np.linalg.inv(R)',
+        'x_filtered': 'x_column + K @ residual',
+    }.items():
+        marker = f'{name} = None  #'
+        if mechanics.count(marker) != 1:
+            raise AssertionError(f'Expected one exercise expression for {name}')
+        mechanics = mechanics.replace(marker, f'{name} = {expression}  #')
+    exec(mechanics, namespace)
+    return cells, namespace
+
+
 class VerticalTests(unittest.TestCase):
     def test_visible_notebook_model_gate_and_rest_update_drive_replay(self):
-        notebook = json.loads(Path(__file__).with_name('03_height_velocity.ipynb').read_text())
-        cells = {cell['id']: ''.join(cell['source']) for cell in notebook['cells']}
-        namespace = {'np': np, 'vertical': v}
-        mechanics = cells['day2-mechanics']
-        for name, expression in {
-            'x_predicted': 'F @ x + B * acceleration',
-            'C_predicted': 'F @ C @ F.T + Q',
-            'K': 'C_predicted @ H / R',
-            'x_filtered': 'x_predicted + K * residual',
-        }.items():
-            mechanics = mechanics.replace(f'{name} = None  #', f'{name} = {expression}  #')
-        exec(mechanics, namespace)
+        cells, namespace = completed_notebook_filter()
         exec(cells['day2-gate-policy'], namespace)
         namespace['settings'] = v.Settings()
         namespace['replace'] = __import__('dataclasses').replace
@@ -66,6 +77,45 @@ class VerticalTests(unittest.TestCase):
             self.assertGreater(rest.call_count, 0)
         rejected = v.run(data, gate_step=lambda residual, R, threshold: False)
         self.assertFalse(rejected['accepted'].any())
+
+    def test_notebook_matrix_expressions_preserve_state_and_covariance_shapes(self):
+        _, namespace = completed_notebook_filter()
+        predict, update = namespace['our_predict'], namespace['our_update']
+        x = np.array([.3, -.2])
+        C = np.array([[.04, .01], [.01, .09]])
+        for dt in (.03, .05, .2):
+            for acceleration in (-.4, 0., .4):
+                for variance in (.000025, .04):
+                    with self.subTest(dt=dt, acceleration=acceleration, variance=variance):
+                        predicted, covariance = predict(x.copy(), C.copy(), acceleration, dt, .08)
+                        self.assertEqual(predicted.shape, (2,))
+                        self.assertEqual(covariance.shape, (2, 2))
+                        expected_x, expected_C = v.predict(x, C, acceleration, dt, .08)
+                        np.testing.assert_allclose(predicted, expected_x)
+                        np.testing.assert_allclose(covariance, expected_C)
+                        filtered, filtered_C = update(predicted, covariance, .35, variance)
+                        self.assertEqual(filtered.shape, (2,))
+                        self.assertEqual(filtered_C.shape, (2, 2))
+                        expected_x, expected_C = v.update(expected_x, expected_C, .35, variance)
+                        np.testing.assert_allclose(filtered, expected_x)
+                        np.testing.assert_allclose(filtered_C, expected_C)
+
+    def test_notebook_filter_matches_reference_replay_with_gating_dropout_and_rest(self):
+        _, namespace = completed_notebook_filter()
+        data = v.with_outlier(v.select(seed=20))
+        options = dict(range_gap=(8., 11.), stationary_intervals=[(16., 19.)],
+                       residual_gate=lambda dimension, alpha: chi2.ppf(1 - alpha, df=dimension))
+        reference = v.run(data, **options)
+        replay = v.run(data, predict_step=namespace['our_predict'],
+                       update_step=namespace['our_update'], **options)
+        self.assertEqual(replay['state'].shape, (len(data.time_s), 2))
+        self.assertEqual(replay['covariance'].shape, (len(data.time_s), 2, 2))
+        for field in ('state', 'covariance', 'predicted_residual', 'predicted_residual_variance',
+                      'chi2', 'gain'):
+            with self.subTest(field=field):
+                np.testing.assert_allclose(replay[field], reference[field], atol=1e-14, equal_nan=True)
+        for field in ('accepted', 'stationary_update', 'time_s'):
+            np.testing.assert_array_equal(replay[field], reference[field])
 
     def test_e2_plot_labels_frozen_normalization_and_undefined_constant_channels(self):
         import matplotlib.pyplot as plt
@@ -263,6 +313,22 @@ class VerticalTests(unittest.TestCase):
                 loaded = v.select(root)
                 self.assertIsNone(loaded.truth)
                 np.testing.assert_allclose(loaded.height_m, raw[raw[:, 0] >= 5, 4]/1000)
+            live_root = root/'live-capture'
+            live_root.mkdir()
+            live_raw = np.column_stack((raw[:, 0], np.full((len(raw), 3), .25), raw[:, 1:]))
+            with (live_root/'raw.csv').open('w', newline='') as stream:
+                writer = csv.writer(stream)
+                writer.writerow(v.LIVE_COLUMNS)
+                writer.writerows(live_raw)
+            details = dict(metadata, format='vertical-sensors-v2', columns=list(v.LIVE_COLUMNS),
+                           channels=list(v.LIVE_SENSOR_COLUMNS),
+                           vertical_analysis_channels=list(v.VERTICAL_SENSOR_COLUMNS),
+                           raw_sha256=hashlib.sha256((live_root/'raw.csv').read_bytes()).hexdigest())
+            (live_root/'recording.json').write_text(json.dumps(details))
+            loaded = v.select(live_root)
+            expected = v.prepare(raw, metadata)
+            np.testing.assert_allclose(loaded.acceleration_m_s2, expected.acceleration_m_s2)
+            np.testing.assert_allclose(loaded.height_m, expected.height_m)
             data = v.select()
             result = v.run(data, range_gap=(8, 11))
             output = root/'comparison'
@@ -312,6 +378,23 @@ class VerticalTests(unittest.TestCase):
                 self.assertIn('day2.vertical_live', runner.call_args.args[0])
                 self.assertIn('--capture-worker', runner.call_args.args[0])
                 self.assertNotIn('day2.live', runner.call_args.args[0])
+
+    def test_vertical_capture_overwrite_is_opt_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)/'capture'
+            output.mkdir()
+            marker = output/'previous.txt'
+            marker.write_text('keep unless overwrite is requested')
+            with patch('day2.notebook_tools._run_capture') as runner:
+                with self.assertRaises(FileExistsError):
+                    capture_vertical(output, 'test://radio', ready_for_motor_stop=True)
+                self.assertTrue(marker.is_file())
+                runner.assert_not_called()
+                runner.return_value = subprocess.CompletedProcess([], 1, 'failed', '')
+                with self.assertRaises(RuntimeError):
+                    capture_vertical(output, 'test://radio',
+                                     ready_for_motor_stop=True, overwrite=True)
+                self.assertFalse(output.exists())
 
     def test_cli_supervises_worker_and_propagates_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -406,6 +489,10 @@ notebook_radio.crazyflie.init = lambda: None
     def fake_capture(self, output, *, unsafe=False, lose_status=False):
         cf = MagicMock()
         cf.param.get_value.return_value = '1'
+        cf.log.toc.get_element_by_complete_name.side_effect = lambda channel: (
+            types.SimpleNamespace(ctype=('uint16_t' if channel in live.STATUS_CHANNELS
+                                         or channel == 'range.zrange' else 'float'))
+            if channel in (*live.STATUS_CHANNELS, *live.SENSOR_CHANNELS) else None)
         logs = []
         class Callbacks:
             def __init__(self): self.callbacks = []
@@ -428,7 +515,8 @@ notebook_radio.crazyflie.init = lambda: None
                     motors = [int(unsafe and index == 10), 0, 0, 0]
                     if not (lose_status and 10 <= index <= 20):
                         logs[0].data_received_cb.emit(stamp, dict(zip(live.STATUS_CHANNELS, [info, *motors])), logs[0])
-                    logs[1].data_received_cb.emit(stamp, dict(zip(live.SENSOR_CHANNELS, [0, 0, 1, 300])), logs[1])
+                    sensors = [index*.01, -index*.01, index*.02, 0, 0, 1, 300]
+                    logs[1].data_received_cb.emit(stamp, dict(zip(live.SENSOR_CHANNELS, sensors)), logs[1])
         connection = MagicMock()
         connection.cf = cf
         modules = {name: types.ModuleType(name) for name in (
@@ -441,6 +529,7 @@ notebook_radio.crazyflie.init = lambda: None
         with patch.dict('sys.modules', modules), patch('notebook_radio.crazyflie.init'), \
              patch('notebook_radio.engage_motor_stop', return_value={'value': 1}) as stop:
             try:
+                self.capture_logs = logs
                 return live.collect(output, 'test://no-radio')
             finally:
                 stop.assert_called_once_with(cf)
@@ -458,7 +547,24 @@ notebook_radio.crazyflie.init = lambda: None
             metadata = json.loads((output/'recording.json').read_text())
             self.assertEqual(metadata['status'], 'complete')
             self.assertEqual(metadata['channels'], list(live.SENSOR_CHANNELS))
+            self.assertEqual(metadata['columns'], list(v.LIVE_COLUMNS))
             self.assertNotIn('stateEstimate.z', metadata['channels'])
+            self.assertEqual(self.capture_logs[1].variables, [
+                (channel, 'uint16_t' if channel == 'range.zrange' else 'float')
+                for channel in live.SENSOR_CHANNELS
+            ])
+            self.assertEqual(self.capture_logs[0].variables, [
+                (channel, 'uint16_t') for channel in live.STATUS_CHANNELS
+            ])
+            self.assertEqual(sum(2 if ctype == 'uint16_t' else 4
+                                for _, ctype in self.capture_logs[1].variables), 26)
+            with (output/'raw.csv').open(newline='') as stream:
+                reader = csv.DictReader(stream)
+                self.assertEqual(reader.fieldnames, list(v.LIVE_COLUMNS))
+                rows = list(reader)
+                self.assertAlmostEqual(float(rows[1]['gyro.x']), .01)
+                self.assertAlmostEqual(float(rows[1]['gyro.y']), -.01)
+                self.assertAlmostEqual(float(rows[1]['gyro.z']), .02)
 
     def test_motor_or_status_failure_preserves_partial_input_and_stop(self):
         for kwargs in ({'unsafe': True}, {'lose_status': True}):

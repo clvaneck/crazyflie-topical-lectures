@@ -982,6 +982,13 @@ def render_replay(drone, results, fps=30, size=500, max_frames=600):
     tgts  = [int(v)   for v in results[idx, 11]]
 
     y_min, z_min, y_max, z_max = drone.range
+    # Runs with a clamped flight_range (e.g. [0, 0, 0, 0] for the jig
+    # tests) would give a zero-size view: widen such axes to the default
+    # +-3 m for the display only.
+    if y_max - y_min < 1e-9:
+        y_min, y_max = -3.0, 3.0
+    if z_max - z_min < 1e-9:
+        z_min, z_max = -3.0, 3.0
     w_y = y_max - y_min
     w_z = z_max - z_min
 

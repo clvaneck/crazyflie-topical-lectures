@@ -9,6 +9,12 @@ import numpy as np
 from race_common.geometry import plane_basis
 
 DEFAULT_FRAME_MARGIN_M = 0.10
+DEFAULT_FRAME_DEPTH_M = 0.10
+CONSERVATIVE_CRUISE_M_S = 0.20
+CONSERVATIVE_MAXIMUMS = (("maximum_speed_m_s", .30), ("maximum_acceleration_m_s2", .50),
+                         ("maximum_tilt_deg", 10.))
+CONSERVATIVE_MARGIN_M = .10
+CONSERVATIVE_PHASE_DURATION_S = 3.
 
 
 def frame_margin(gate):
@@ -69,6 +75,11 @@ def positive(value, name):
     return result
 
 
+def turning_velocities(turn):
+    """World XYZ m/s, with a stationary target for every omitted velocity."""
+    return turn.get("velocities_m_s", [[0., 0., 0.] for _ in turn["positions_m"]])
+
+
 def gate_outline(gate):
     """Draw the physical opening, retaining the rectangle's measured axes."""
     centre = vector(gate["centre"], "gate centre")
@@ -124,16 +135,131 @@ def validate_course(course):
     if not gates or len({gate["name"] for gate in gates}) != len(gates):
         raise ValueError("at least one crossing and unique crossing names are required")
     points = [vector(course[key], key) for key in ("start", "finish")]
+    version = course.get("trajectory_version")
+    has_choices = ("turning_waypoints" in course or "stop_at_approaches" in course or
+                   any("speed_m_s" in gate or "crossing_offset_m" in gate for gate in gates))
+    if "trajectory_version" in course and (type(version) is not int or version != 1):
+        raise ValueError("Unsupported trajectory_version; use version 1")
+    if has_choices and version != 1:
+        raise ValueError("Per-crossing choices require trajectory_version=1")
+    if "stop_at_approaches" in course and type(course["stop_at_approaches"]) is not bool:
+        raise ValueError("stop_at_approaches must be a boolean")
+    profile = course.get("planning_profile", "custom")
+    if profile not in ("conservative", "custom"):
+        raise ValueError("planning_profile must be conservative or custom")
+    if profile == "conservative":
+        if course.get("stop_at_approaches") is not True:
+            raise ValueError("Conservative profiles must stop at gate approaches")
+        for name, ceiling in CONSERVATIVE_MAXIMUMS:
+            if limits[name] > ceiling:
+                raise ValueError(f"Conservative {name} exceeds {ceiling:g}")
+        if limits["clearance_margin_m"] < CONSERVATIVE_MARGIN_M:
+            raise ValueError("Conservative aperture margin must be at least 0.10 m")
+        if min(limits["takeoff_duration_s"], limits["landing_duration_s"]) < CONSERVATIVE_PHASE_DURATION_S:
+            raise ValueError("Conservative takeoff and landing durations must be at least 3 s")
+    if "frame_depth_m" in course:
+        positive(course["frame_depth_m"], "frame_depth_m")
     for gate in gates:
         if not isinstance(gate["name"], str) or not gate["name"].strip():
             raise ValueError("crossing names must be nonempty strings")
         gate_outline(gate)
         frame_margin(gate)
+        if "frame_depth_m" in gate:
+            positive(gate["frame_depth_m"], "frame_depth_m")
         if gate["radius_m"] <= limits["drone_radius_m"] + limits["clearance_margin_m"]:
             raise ValueError(f"gate {gate['name']} has insufficient aperture clearance")
         points.append(vector(gate["centre"], "gate centre"))
+        if "speed_m_s" in gate:
+            speed = positive(gate["speed_m_s"], "gate speed_m_s")
+            if isinstance(gate["speed_m_s"], bool) or speed > limits["maximum_speed_m_s"]:
+                raise ValueError("Gate speed must stay within the shared maximum speed")
+        if "crossing_offset_m" in gate:
+            offset = vector(gate["crossing_offset_m"], "crossing_offset_m")
+            normal = vector(gate["normal"], "gate normal")
+            if abs(offset @ normal) > 1e-6:
+                raise ValueError("Crossing offset must lie in the gate plane")
+            required = limits["drone_radius_m"] + limits["clearance_margin_m"]
+            if np.linalg.norm(offset) + required >= gate["radius_m"]:
+                raise ValueError("Crossing offset consumes the aperture clearance")
+            points.append(vector(gate["centre"], "gate centre") + offset)
+    slots = set()
+    turns = course.get("turning_waypoints", [])
+    if not isinstance(turns, list):
+        raise ValueError("turning_waypoints must be a list of after_crossing/positions_m records")
+    for turn in turns:
+        if (not isinstance(turn, dict) or not {"after_crossing", "positions_m"}.issubset(turn)
+                or set(turn) - {"after_crossing", "positions_m", "velocities_m_s"}):
+            raise ValueError("Each turning record needs after_crossing, positions_m and optional velocities_m_s")
+        slot = turn["after_crossing"]
+        if type(slot) is not int or not 0 <= slot <= len(gates) or slot in slots:
+            raise ValueError("Turning slot must be unique and between 0 and the crossing count")
+        slots.add(slot)
+        if not isinstance(turn["positions_m"], list) or not turn["positions_m"]:
+            raise ValueError("Supply at least one XYZ turning position per slot")
+        points.extend(vector(point, "turning waypoint") for point in turn["positions_m"])
+        velocities = turning_velocities(turn)
+        if not isinstance(velocities, list) or len(velocities) != len(turn["positions_m"]):
+            raise ValueError("Supply one XYZ target velocity per turning position")
+        for value in velocities:
+            velocity = vector(value, "turning target velocity")
+            if np.linalg.norm(velocity) > limits["maximum_speed_m_s"] + 1e-12:
+                raise ValueError("Turning target velocity exceeds the shared maximum speed")
+            if profile == "conservative" and np.any(velocity != 0):
+                raise ValueError("Fly-through turning velocities require conservative=False; default waypoints stop")
     if np.any(np.asarray(points) < lower) or np.any(np.asarray(points) > upper):
         raise ValueError("start, finish or gate centre lies outside the flight volume")
+
+
+def configure_crossings(course, *, gate_speeds=None, crossing_offsets=None, turning_waypoints=None):
+    """Apply notebook choices to a private copy, retaining physical gate geometry.
+
+    A physical gate ID applies to every passage; an exact crossing name overrides
+    that choice. Turning slot 0 precedes the first crossing, slot N follows it.
+    """
+    course = deepcopy(course)
+    course["trajectory_version"] = 1
+    names = {gate["name"] for gate in course["hoops"]}
+    names.update(gate.get("gate_id", gate["name"]) for gate in course["hoops"])
+    for field, choices in (("speed_m_s", gate_speeds), ("crossing_offset_m", crossing_offsets)):
+        if choices is None:
+            continue
+        if not isinstance(choices, dict) or set(choices) - names:
+            raise ValueError(f"{field}: use physical gate IDs or exact crossing names from the summary")
+        for gate in course["hoops"]:
+            gate.pop(field, None)
+            key = gate["name"] if gate["name"] in choices else gate.get("gate_id", gate["name"])
+            if key in choices:
+                value = choices[key]
+                gate[field] = vector(value, field).tolist() if field == "crossing_offset_m" else value
+    if turning_waypoints is not None:
+        if not isinstance(turning_waypoints, dict):
+            raise ValueError("Turning waypoints use {after_crossing: [XYZ, ...]}")
+        turns = []
+        for slot, waypoints in turning_waypoints.items():
+            if type(slot) is not int:
+                raise ValueError("Turning slots are integer crossing counts, starting at 0")
+            if not isinstance(waypoints, (list, tuple, np.ndarray)):
+                raise ValueError("Turning positions must be a list of XYZ vectors")
+            positions, velocities = [], []
+            has_velocity = False
+            for waypoint in waypoints:
+                if isinstance(waypoint, dict):
+                    if "position" not in waypoint or set(waypoint) - {"position", "velocity"}:
+                        raise ValueError("A turning waypoint needs position and optional velocity")
+                    position = waypoint["position"]
+                    velocity = waypoint.get("velocity", [0, 0, 0])
+                    has_velocity = has_velocity or "velocity" in waypoint
+                else:
+                    position, velocity = waypoint, [0, 0, 0]
+                positions.append(vector(position, "turning waypoint").tolist())
+                velocities.append(vector(velocity, "turning target velocity").tolist())
+            record = dict(after_crossing=slot, positions_m=positions)
+            if has_velocity:
+                record["velocities_m_s"] = velocities
+            turns.append(record)
+        course["turning_waypoints"] = sorted(turns, key=lambda turn: turn["after_crossing"])
+    validate_course(course)
+    return course
 
 
 def construct_course(template, surveys=(), crossings=(), laps=1, frame_margin_m=None):
@@ -158,7 +284,7 @@ def construct_course(template, surveys=(), crossings=(), laps=1, frame_margin_m=
             # Only runner/plotting geometry goes into the course. Original survey
             # samples and provenance stay in the unmodified measurement file.
             fields = ("name", "centre", "normal", "radius_m", "shape", "width_m",
-                      "height_m", "width_axis", "height_axis", "frame_margin_m")
+                      "height_m", "width_axis", "height_axis", "frame_margin_m", "frame_depth_m")
             gate = {key: deepcopy(gates[name][key]) for key in fields if key in gates[name]}
             gate["normal"] = (vector(gate["normal"], "normal") * (1 if sign == "+" else -1)).tolist()
             sequence.append(gate)
@@ -170,6 +296,7 @@ def construct_course(template, surveys=(), crossings=(), laps=1, frame_margin_m=
     for lap in range(1, laps + 1):
         for index, gate in enumerate(sequence, start=1):
             event = deepcopy(gate)
+            event["gate_id"] = gate.get("gate_id", gate["name"])
             event["name"] = f"lap-{lap}-{index}-{gate['name']}"
             event["frame_margin_m"] = frame_margin(gate) if frame_margin_m is None else frame_margin_m
             course["hoops"].append(event)
