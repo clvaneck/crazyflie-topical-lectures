@@ -1,0 +1,11 @@
+name,value
+drone,4
+time,1546
+run_label,helix
+axes,xy
+step,0.0
+v_max,0.9
+aborted,
+speed,0.9
+z,0.5
+moves,forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; forward 0.25; up 0.1; turn 45.0; hold 1.0; down 1.6

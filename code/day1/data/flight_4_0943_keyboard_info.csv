@@ -1,0 +1,12 @@
+name,value
+drone,4
+time,0943
+run_label,keyboard
+axes,xy
+step,0.0
+v_max,0.1
+aborted,"fence at x 1.50 m, y 0.21 m from start"
+keyboard_speed,0.1
+speed,0.1
+z,0.5
+moves,hold 60

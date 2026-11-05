@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone 4 Flight Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+<style>
+/* Layout: status strip first, then the gates before every flight, the flight sequence, keyboard flying, tomorrow's race. One column, scanned top to bottom. */
+:root {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #16212c;
+  --muted: #5b6875;
+  --line: #d9dfe5;
+  --accent: #1f5fbf;
+  --ok: #1d7a46;   --ok-bg: #e2f3e9;
+  --warn: #9a6200; --warn-bg: #fbf0d9;
+  --bad: #b3261e;  --bad-bg: #fbe4e2;
+  --todo: #4a5866; --todo-bg: #e8ecf0;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171d; --panel: #18212a; --ink: #e3e9ef; --muted: #93a1ae; --line: #2a3640; --accent: #6ea1f0;
+    --ok: #6fcf97; --ok-bg: #173325; --warn: #e8b55a; --warn-bg: #3a2c12; --bad: #f08a80; --bad-bg: #3d1a18;
+    --todo: #b3c0cc; --todo-bg: #25313c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171d; --panel: #18212a; --ink: #e3e9ef; --muted: #93a1ae; --line: #2a3640; --accent: #6ea1f0;
+  --ok: #6fcf97; --ok-bg: #173325; --warn: #e8b55a; --warn-bg: #3a2c12; --bad: #f08a80; --bad-bg: #3d1a18;
+  --todo: #b3c0cc; --todo-bg: #25313c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
+main { max-width: 920px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+h1 { font: 600 30px/1.15 var(--display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h2 { font: 600 20px/1.2 var(--display); margin: 0 0 12px; letter-spacing: .02em; text-wrap: balance; }
+h3 { font: 600 15px/1.3 var(--body); margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.meta { color: var(--muted); font-size: 13px; }
+code, .mono { font-family: var(--mono); font-size: 13px; }
+code { background: var(--todo-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; display: grid; gap: 14px; }
+section > p.lead { color: var(--muted); }
+.pill { display: inline-block; font: 500 11.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+.ok { color: var(--ok); background: var(--ok-bg); }
+.warn { color: var(--warn); background: var(--warn-bg); }
+.bad { color: var(--bad); background: var(--bad-bg); }
+.todo { color: var(--todo); background: var(--todo-bg); }
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.tile.ok { border-left-color: var(--ok); background: var(--panel); color: var(--ink); }
+.tile.bad { border-left-color: var(--bad); background: var(--panel); color: var(--ink); }
+.tile.warn { border-left-color: var(--warn); background: var(--panel); color: var(--ink); }
+.tile .k { font: 500 12px/1.2 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tile .v { font-weight: 600; }
+.tile .n { font-size: 13.5px; color: var(--muted); }
+ul.rows { list-style: none; margin: 0; padding: 0; display: grid; }
+ul.rows li { display: grid; grid-template-columns: 92px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+ul.rows li:first-child { border-top: 0; }
+ul.rows li .pill { justify-self: start; }
+ul.rows .d { display: grid; gap: 3px; }
+ul.rows .d span { color: var(--muted); font-size: 13.5px; }
+ol.seq { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+ol.seq li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: start; }
+ol.seq li:first-child { border-top: 0; }
+ol.seq li::before { content: counter(step); font: 600 14px/26px var(--mono); width: 26px; height: 26px; border-radius: 50%; text-align: center; background: var(--todo-bg); color: var(--todo); }
+ol.seq li.done::before { background: var(--ok-bg); color: var(--ok); }
+ol.seq li.next::before { background: var(--accent); color: var(--panel); }
+ol.seq .d { display: grid; gap: 4px; }
+ol.seq .d span { color: var(--muted); font-size: 13.5px; }
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.key { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+kbd { font: 500 12.5px/1 var(--mono); min-width: 28px; text-align: center; padding: 6px 7px; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; background: var(--bg); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.box { border: 1px dashed var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; }
+.box ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.scroll { overflow-x: auto; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+th { font: 500 12px/1.2 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; border-top: 0; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+@media (max-width: 480px) {
+  ul.rows li { grid-template-columns: 1fr; gap: 6px; }
+  ol.seq li { grid-template-columns: 30px 1fr; }
+  ol.seq li > .pill { grid-column: 2; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Drone 4: race day plan</h1>
+  <p class="meta">Crazyflie 2.1 + flow deck · <span class="mono">radio://0/30/2M/E7E7E7E704</span> · state on Thursday 5 November 2026, ~10:00, testing at ~11:30 · tools: <span class="mono">code/day1/drone_pipeline.py</span> · handover: <span class="mono">code/day1/HANDOVER.md</span></p>
+</header>
+
+<section aria-labelledby="plan">
+  <h2 id="plan">Race day plan: 1.5 h to testing</h2>
+  <p class="lead">Two races today. <b>Race 1: just pass every hoop in time.</b> Race 2: run from our own laptops, with a secret secondary goal (a backflip). The organisers publish how to run the race on GitLab later today, plus a JSON file with the hoop positions and edges in the Lighthouse frame. We get about 7 m of track: use all of it.</p>
+  <ol class="seq">
+    <li class="next"><div class="d"><h3>Charge to ≥ 4.10 V at rest</h3><span>~3.67 V after this morning. USB in, <code>crazyflie.py charge --label 4</code>; unplug before flying.</span></div><span class="pill warn">now · Niels</span></li>
+    <li class="done"><div class="d"><h3>Lighthouse deck: present and fused</h3><span>deck.bcLighthouse4 = 1, lighthouse.fwdToEstimator = 1: the Kalman filter fuses Lighthouse by itself once base stations are visible. Absolute yaw should also fix the ±17° flow-deck yaw drift.</span></div><span class="pill ok">checked</span></li>
+    <li class="next"><div class="d"><h3>In the arena: upload the setup, then <code>drone_pipeline.py lh_check</code></h3><span><code>crazyflie.py lighthouse --label 4 --yaml &lt;organisers' file&gt;</code>, then <code>lh_check</code> (no flight). It must print LIGHTHOUSE OK: status 2, ≥ 2 stations, position still within 2 cm. Tested here: correctly NOT OK, 0 stations.</span></div><span class="pill warn">at testing</span></li>
+    <li class="done"><div class="d"><h3>Height sensor noise: no new calibration needed</h3><span>Today's hovers at 0.5 m: ToF noise 2.0–2.6 mm, against 1.7 mm at rest on Day 2. The Day 2 value stands.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Day 2 E7 with the measured lag 0.50 s</h3><span>Crossing speeds halve: 0.22 m/s with range, 0.13 m/s in a 3 s range gap.</span></div><span class="pill ok">done</span></li>
+    <li><div class="d"><h3>Hoop JSON → visual check → plan → dry run</h3><span>Ready and tested offline (108 day3 tests pass). <code>hoop_view.py race1.json</code> draws top and side views with numbered normals and a table; a negative <code>n.dir_next</code> flags a reversed normal. It reads most JSON layouts. Then <code>--to-course</code> into our template (<b>set the real arena bounds</b>), plan with <code>plan_race</code> (conservative: runner flies our exact path, ≤ 0.3 m/s), view <code>--plan</code>, then dry run in <code>03_flight.ipynb</code>. Submission: <code>submissions/team-X/v01/{baseline,optimized}/</code>. Steps: <code>code/day3/RACE_READY.md</code>.</span></div><span class="pill ok">ready</span></li>
+    <li><div class="d"><h3>Race-area floor and battery gate</h3><span><code>crazyflie.py flow --label 4</code> over the race floor (quality ~100), then <code>preflight vbat_min=4.10</code> on a card, facing +x.</span></div><span class="pill todo">at testing</span></li>
+    <li><div class="d"><h3>Race 1: pass every hoop, conservative speed</h3><span>Finish in time, not fast. Keep max speed ≤ 0.3 m/s: at our 0.5 s lag, 0.5 m/s trails by 0.25 m, close to the runner's 0.3 m abort. Fake 7 m, 3-hoop course: 41 s + 6 s take-off and landing; the time limit is unknown. Confirm the Lighthouse origin and axes, take off facing +x. The runner's dry run must print TRAJECTORY PROTOCOL 1. Each flight needs Niels's go.</span></div><span class="pill todo">race 1</span></li>
+    <li><div class="d"><h3>Race 2 extra: backflip, research first</h3><span><code>code/day3/backflip_notes.md</code>: <b>no-go by default</b>. Go only with spare drone/props, padding, ceiling ≥ 2.3 m, a rehearsed script, and race 1 already in. Method: open-loop phased flip from 1.7 m (climb 0.2 s, pitch rate 800°/s at low thrust ~0.42 s, catch level, hold position), flow deck off during the spin, loses 0.3–0.6 m. No 3rd-derivative PID: at full motor output feedback doesn't help, and it amplifies IMU noise. Stock firmware is enough. Numbers are estimates; hover thrust and the pitch sign must be measured first. Separate go.</span></div><span class="pill warn">no-go default</span></li>
+    <li class="next"><div class="d"><h3>Race rehearsal here, <code>rehearse.py fly plans/race1/trajectory.csv room=3</code></h3><span>Flies the planned race path with position setpoints from the drone's start. If the path doesn't fit, it is scaled in distance and time together, so race speeds are kept. Predicted lag error 0.14 m on the fake 7 m plan; the flight prints the measured error. <code>check</code> first (no radio). Fake-drone test passes. Separate go.</span></div><span class="pill warn">before the track</span></li>
+    <li class="next"><div class="d"><h3>Backflip ladder, <code>flip.py</code></h3><span><code>plan</code> (model, no radio), then <code>fly step=hover</code> (hover at 1.5 m, measures hover thrust), <code>step=hop</code> (climb burst + recover, no spin), <code>step=flip</code>. Each a separate go. Model: hover takes 72 % PWM, so max thrust is only 1.45× hover; the 0.4 s climb is what saves it (0.2 s loses 1.2 m). From 1.5 m at 1000°/s: no height lost, peak 2.05 m, so a clear height ≥ 2.4 m is needed. Gates in flight: hover thrust &lt; 52000 PWM, model lowest point ≥ 0.5 m. Lighthouse helps before and after the spin, not during it.</span></div><span class="pill todo">race 2</span></li>
+  </ol>
+</section>
+
+<section aria-labelledby="where">
+  <h2 id="where">Where we are</h2>
+  <div class="status">
+    <div class="tile ok"><span class="k">Drone</span><span class="v">Recharge for the race</span><span class="n">4.10 V (89 %) at the start; ~3.67 V after 4 tune and 2 keyboard flights, all clean landings. Race needs ≥ 4.10 V at rest.</span></div>
+    <div class="tile ok"><span class="k">Remaining</span><span class="v">0 Day 1 flights</span><span class="n">Calibration, tuning, handover, two keyboard flights and the Day 2 E7 lag are done. Next: Day 3 race (charge, floor check, preflight vbat_min=4.10).</span></div>
+    <div class="tile ok"><span class="k">Abort window</span><span class="v">Verified</span><span class="n">Enter registered after 1.3 s on this laptop.</span></div>
+    <div class="tile ok"><span class="k">Floor</span><span class="v">Carpet, not the plain floor</span><span class="n">Plain floor 4_1520 drifted ~4 m while the estimate saw 15 cm. Carpet: surface quality 110–130 at 0.6 m.</span></div>
+    <div class="tile ok"><span class="k">Carpet hover 4_1540</span><span class="v">Near perfect</span><span class="n">Hover std 10 mm / 3 mm, matches what we saw.</span></div>
+    <div class="tile ok"><span class="k">Calibration 4_1543</span><span class="v">τ 0.13 s, dead time 0.18 s</span><span class="n">Noise bounds |Kp| &lt; 2.1, |Kd| &lt; 2.9. In data/drone_4_params.json.</span></div>
+    <div class="tile ok"><span class="k">Tuning</span><span class="v">Best: Kp −2.0, Kd −0.3, Ki 0</span><span class="n">Saved with set_best. Repeat 4_0941 confirms 4_0937: rise 2.00 s, overshoot 4.0 cm, max error last 2 s 4.5 cm. Ki −0.1 made it worse.</span></div>
+    <div class="tile ok"><span class="k">Preflight on carpet</span><span class="v">Fixed with a card</span><span class="n">A flat card under the drone: ground drift 0.001–0.002 m, preflight OK every time today.</span></div>
+    <div class="tile warn"><span class="k">Yaw in flight</span><span class="v">Drifts 0 → +15°</span><span class="n">4_0936: median 7.8°, y drifted 20 cm during an x step. Matters for the race.</span></div>
+    <div class="tile ok"><span class="k">Keyboard mode</span><span class="v">Flown at 0.1 and 0.2 m/s</span><span class="n">4_0943 at 0.1 m/s: flown forward to the 1.5 m fence, which landed it. It coasted 0.2 m while landing: keep margin past the fence.</span></div>
+    <div class="tile ok"><span class="k">Software</span><span class="v">Dry run passes</span><span class="n">Pipeline on the fake drone, course tests 27/27, preflight gates live.</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="gates">
+  <h2 id="gates">Check before every flight</h2>
+  <p class="lead">The first seven are automatic in <code>preflight()</code>, which every flying function runs and which refuses to take off on any failure. The rest are people checks.</p>
+  <ul class="rows">
+    <li><span class="pill ok">auto</span><div class="d"><h3>Battery at rest ≥ 3.5 V, race ≥ 4.10 V</h3><span>A full battery before identify and tuning, so runs compare. In flight the loop lands below 3.1 V.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>On battery, USB unplugged</h3><span>Charging reads a high voltage; preflight wants the power state &quot;in use&quot;.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>Flow deck attached, height estimate agrees with the sensor</h3><span>Catches a loose deck or a range sensor that reads nothing.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>Supervisor not locked, can arm or already armed</h3><span>Locked after a crash: <code>python crazyflie.py reboot --label 4</code>, a soft reboot over the radio, cleared it where <code>recover=True</code> did not.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>Position estimate still on the ground</h3><span>Also fails if someone else is moving the drone, or on deep carpet pile (height reads 0): put a thin card under it.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>Facing +x, |yaw| ≤ 10° after the estimator reset</h3><span>Our loop sends body-frame velocities from world-frame errors. Flight 4_1533 flew at 95° and went sideways.</span></div></li>
+    <li><span class="pill ok">auto</span><div class="d"><h3>Abort window works this session</h3><span><code>drone_pipeline.py abort_test</code>, no drone, press Enter within 10 s.</span></div></li>
+    <li><span class="pill warn">by hand</span><div class="d"><h3>Floor has texture under the flight area</h3><span><code>python crazyflie.py flow --label 4</code>, hold the drone 0.5 m up and move it. Surface quality should be about 100; near 0 means the estimate will not see drift.</span></div></li>
+    <li><span class="pill warn">by hand</span><div class="d"><h3>Nobody else on our radio address</h3><span>Neighbouring groups use their own label. Two laptops sending setpoints to one drone means neither controls it, and Enter may not land it.</span></div></li>
+    <li><span class="pill warn">by hand</span><div class="d"><h3>Hardware after any crash</h3><span>Props uncracked and tight, motors spin freely, flow deck seated, battery strap tight.</span></div></li>
+    <li><span class="pill warn">by hand</span><div class="d"><h3>People</h3><span>Pilot clicked into the abort window, a second person watching, 1.5 m clear, nobody within arm's length.</span></div></li>
+    <li><span class="pill bad">rule</span><div class="d"><h3>Niels says go for that specific flight</h3><span>One explicit go per flight. Ground checks need none.</span></div></li>
+  </ul>
+</section>
+
+<section aria-labelledby="seq">
+  <h2 id="seq">Day 1 flight sequence (done)</h2>
+  <p class="lead">Each step uses data from the one before. Results land in <code>data/</code>, parameters in <code>data/drone_4_params.json</code>, plots in <code>data/plots/</code>.</p>
+  <ol class="seq">
+    <li class="done"><div class="d"><h3>Hover over the plain floor, <code>firmware_flight hold</code></h3><span>Found the floor problem. Run discarded as a calibration.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Hover over the carpet, <code>firmware_flight hold</code></h3><span>4_1540: near perfect by eye, hover std 10 mm / 3 mm.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Identify, <code>identify</code></h3><span>4_1543: τ 0.13 s, dead time 0.18 s, noise bounds |Kp| &lt; 2.1, |Kd| &lt; 2.9.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Plan the gains, <code>plan</code></h3><span>Model: −0.7 rise 2.88 s, −1.0 2.16 s, −2.0 1.78 s with 1.7 cm overshoot (best); −4 and −8 beyond the noise bound.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Tune −0.7, <code>tune -0.7</code></h3><span>4_1545: rise 3.40 s, no overshoot, mean error last 2 s 6.7 cm.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Tune −1.4, <code>tune -1.4</code></h3><span>4_1546: rise 2.34 s, overshoot 2.6 cm, mean error 2.5 cm. Measured runs are ~0.5 s slower than the model, partly the 0.3 m/s clamp.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Tune −2.0, <code>tune -2.0</code></h3><span>4_0936: rise 2.28 s, overshoot 4.7 cm, ±5 cm swing at the end, 46 % at the clamp. Barely faster than −1.4: the clamp dominates.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Add damping, <code>tune -2.0 -0.3</code></h3><span>4_0937: rise 2.12 s, overshoot 3.5 cm, max error last 2 s 6.7 cm. Better on every number. Kd +0.3 skipped: model gives 5.7 cm overshoot; −0.6 overdamped.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Small Ki, <code>tune -2.0 -0.3 -0.1</code></h3><span>4_0939: rise 1.98 s but overshoot 7.2 cm, ends 2.1 cm past the target. Worse; Ki stays 0.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Repeat the best, <code>tune -2.0 -0.3</code></h3><span>4_0941: rise 2.00 s, overshoot 4.0 cm, max error last 2 s 4.5 cm, mean −0.5 cm. Confirms 4_0937.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Pick the best, <code>set_best -2.0 -0.3 0</code></h3><span>Saved in data/drone_4_params.json.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Read firmware gains, <code>python crazyflie.py params --label 4</code></h3><span>335 parameters, none stored on the drone: posCtlPid.xKp is the default 2.0.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Handover, <code>handover</code></h3><span>Lag 1/xKp = 0.50 s (E7 assumed 0.25 s): 15 cm behind at 0.3 m/s, 25 cm at 0.5 m/s. Race factors 0.9–1.1: lag 0.56–0.45 s.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>First keyboard flight, <code>keyboard speed=0.1</code></h3><span>4_0943: forward at 0.1 m/s to the 1.5 m fence, which landed it; touched down at 1.71 m.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Keyboard at 0.2 m/s, <code>keyboard speed=0.2</code></h3><span>4_0947: full 60 s, steered to x 0.6 m, y 1.2 m, height 0.49–0.59 m, yaw ±17°. First try refused: the drone was off the card.</span></div><span class="pill ok">done</span></li>
+    <li class="done"><div class="d"><h3>Day 2 E7 lag, <code>RESULTS_day2.md</code></h3><span>Measured 0.50 s replaces the assumed 0.25 s: crossing speeds halve, 0.22 m/s with range, 0.13 m/s in a 3 s range gap.</span></div><span class="pill ok">done</span></li>
+  </ol>
+</section>
+
+<section aria-labelledby="keys">
+  <h2 id="keys">New: fly the drone with the keyboard</h2>
+  <p class="lead">The course only has keyboard flying in the 2D simulator. The real-drone loop already pumps a Qt window for the abort key, so a keyboard mode can reuse that window and every safety check of <code>fly()</code>. Built: <code>drone_pipeline.py key_test</code> (no drone) and <code>drone_pipeline.py keyboard speed=0.1</code> (flies).</p>
+  <div class="keys">
+    <div class="key"><kbd>↑</kbd><kbd>↓</kbd><span>forward / back, 0.2 m/s while held</span></div>
+    <div class="key"><kbd>←</kbd><kbd>→</kbd><span>left / right, 0.2 m/s while held</span></div>
+    <div class="key"><kbd>W</kbd><kbd>S</kbd><span>up / down, height kept 0.3–1.0 m</span></div>
+    <div class="key"><kbd>A</kbd><kbd>D</kbd><span>yaw ±30°/s, arrows stay body frame</span></div>
+    <div class="key"><kbd>no key</kbd><span>zero velocity: it stops and hovers, slow drift</span></div>
+    <div class="key"><kbd>Enter</kbd><kbd>Esc</kbd><span>land, as in every flight</span></div>
+  </div>
+  <div class="two">
+    <div class="box"><h3>Kept from the flight loop</h3><ul>
+      <li>preflight gates before arming</li>
+      <li>1.5 m fence, stale radio data, battery &lt; 3.1 V, frozen height sensor, Kalman variance</li>
+      <li>logging and the same CSV files, so a keyboard flight can be plotted</li>
+      <li>speed capped at 0.3 m/s whatever the key repeat does</li>
+    </ul></div>
+    <div class="box"><h3>Status</h3><ul>
+      <li>done: key state from Qt press and release, auto-repeat ignored, focus loss releases every key</li>
+      <li>done: dry run on the fake drone, a held up arrow is landed by the fence</li>
+      <li>first real flight: arrows only, 0.1 m/s, then raise</li>
+      <li>each real flight needs a go</li>
+    </ul></div>
+  </div>
+</section>
+
+<section aria-labelledby="race">
+  <h2 id="race">Tomorrow: the race (Day 3)</h2>
+  <p class="lead">The common runner is not in the repository. It comes with the run card on the shared flight laptop. Our only controller knob is a factor on the firmware position gain.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Item</th><th>Value</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Battery at rest before a race flight</td><td class="num">≥ 4.10 V</td><td><span class="pill ok">in preflight</span></td></tr>
+      <tr><td>Runner path, python and directory</td><td class="num">from the run card</td><td><span class="pill todo">tomorrow</span></td></tr>
+      <tr><td>Dry run prints the protocol lines</td><td class="num">TUNING / TRAJECTORY PROTOCOL 1</td><td><span class="pill todo">tomorrow</span></td></tr>
+      <tr><td>posCtlPid.xKp, yKp factor</td><td class="num">0.9 – 1.1</td><td><span class="pill warn">needs real xKp</span></td></tr>
+      <tr><td>Kalman pNAcc_xy (optional)</td><td class="num">0.5 – 2.0</td><td><span class="pill todo">optional</span></td></tr>
+      <tr><td>Following lag at xKp 2.0</td><td class="num">0.50 s (E7 assumed 0.25 s)</td><td><span class="pill warn">check margins</span></td></tr>
+      <tr><td>Floor texture of the race area</td><td class="num">surface quality ≈ 100</td><td><span class="pill todo">check on arrival</span></td></tr>
+      <tr><td>Submissions</td><td class="num">baseline/ and optimized/</td><td><span class="pill todo">after flights</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section aria-labelledby="open">
+  <h2 id="open">Open questions</h2>
+  <ul class="rows">
+    <li><span class="pill warn">yaw</span><div class="d"><h3>Yaw estimate swings: −44..+21° in 4_1520, still −20..+15° in the carpet hover 4_1540</h3><span>The drone looked steady, so probably the estimate wanders. A really turning drone breaks our body-frame setpoints; watch it in the next runs.</span></div></li>
+    <li><span class="pill warn">radio</span><div class="d"><h3>How to keep other groups off our drone</h3><span>The course gives no lock. Agree labels with neighbours; a private radio address is possible but changes the course setup, so only with the instructors.</span></div></li>
+    <li><span class="pill todo">deck</span><div class="d"><h3>Is a Lighthouse deck on drone 4?</h3><span>Yesterday's absolute yaw suggests so; today the reset gives 0°. Matters for the race estimator.</span></div></li>
+  </ul>
+</section>
+</main>
+</body>
+</html>

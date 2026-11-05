@@ -1,0 +1,11 @@
+name,value
+drone,4
+time,1535
+run_label,firmware_fwd
+axes,xy
+step,0.0
+v_max,0.3
+aborted,stopped by abort
+speed,0.3
+z,0.5
+moves,forward 0.5; hold 2.0; back 0.5

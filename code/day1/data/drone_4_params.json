@@ -1,0 +1,98 @@
+{
+  "source": "4_1543_identify",
+  "tau_s": 0.13,
+  "delay_s": 0.18,
+  "fit_rms_mps": 0.015197295278535939,
+  "velocity_peak": 1.0813230590429157,
+  "kp_max": 2.0590100629747723,
+  "kd_max": 2.9016312524534396,
+  "std_x_m": 0.01001790403836023,
+  "std_y_m": 0.02428351415036898,
+  "std_vx_mps": 0.011393500722065474,
+  "std_vy_mps": 0.017231686472126015,
+  "n": 75,
+  "best": {
+    "Kp": -2.0,
+    "Kd": -0.3,
+    "Ki": 0,
+    "why": "Kd -0.3 best of 4 runs on 5 Nov: repeat 4_0941 rise 2.00 s, overshoot 4.0 cm, max err last 2 s 4.5 cm; Ki -0.1 overshoots 7.2 cm"
+  },
+  "handover": {
+    "fw_kp": 2.0,
+    "fw_kp_source": "/home/nielsterlinden/Projects/2026.11 - Topical Lectures - Systems and Control/team-crazyflie/code/day1/data/params_4.csv",
+    "rows": [
+      {
+        "factor": 0.9,
+        "xKp": 1.8,
+        "lag_s": 0.5555555555555556,
+        "rise_s": 0.8799999999999999,
+        "overshoot_m": 0.032442032449359726,
+        "following_error_m": {
+          "0.3": 0.16666666666666666,
+          "0.5": 0.2777777777777778
+        }
+      },
+      {
+        "factor": 1.0,
+        "xKp": 2.0,
+        "lag_s": 0.5,
+        "rise_s": 0.8000000000000003,
+        "overshoot_m": 0.050832131690820015,
+        "following_error_m": {
+          "0.3": 0.15,
+          "0.5": 0.25
+        }
+      },
+      {
+        "factor": 1.1,
+        "xKp": 2.2,
+        "lag_s": 0.45454545454545453,
+        "rise_s": 0.7800000000000002,
+        "overshoot_m": 0.0671417162889163,
+        "following_error_m": {
+          "0.3": 0.13636363636363635,
+          "0.5": 0.22727272727272727
+        }
+      }
+    ],
+    "firmware_flights": {
+      "4_1631_helix": {
+        "hover_std_x_mm": 4.86667748152532,
+        "hover_std_y_mm": 12.455641779621589,
+        "max_path_error_cm": 17.8715509627339,
+        "end_error_cm": 9.51933594002324
+      },
+      "4_1520_firmware_hold": {
+        "hover_std_x_mm": 12.684248469780457,
+        "hover_std_y_mm": 18.033917378657776,
+        "max_path_error_cm": 9.970179423709471,
+        "end_error_cm": 9.738423205843583
+      },
+      "4_1533_firmware_fwd": {
+        "hover_std_x_mm": 54.42275488815475,
+        "hover_std_y_mm": 63.4394028131834,
+        "max_path_error_cm": 76.17322626329153,
+        "end_error_cm": 21.452448465963023
+      },
+      "4_1535_firmware_fwd": null,
+      "4_1537_helix": {
+        "hover_std_x_mm": 8.24475610202205,
+        "hover_std_y_mm": 10.77687262296493,
+        "max_path_error_cm": 114.32538816843547,
+        "end_error_cm": 56.82599875236814
+      },
+      "4_1540_firmware_hold": {
+        "hover_std_x_mm": 9.583916710465077,
+        "hover_std_y_mm": 2.664872464605497,
+        "max_path_error_cm": 13.497053049357666,
+        "end_error_cm": 13.497053049357666
+      },
+      "4_1546_helix": {
+        "hover_std_x_mm": 6.407490637506359,
+        "hover_std_y_mm": 11.040685358672794,
+        "max_path_error_cm": 95.08159242303212,
+        "end_error_cm": 55.5586150938928
+      }
+    }
+  }
+}

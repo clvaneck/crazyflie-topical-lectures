@@ -1,0 +1,11 @@
+name,value
+drone,4
+time,1540
+run_label,firmware_hold
+axes,xy
+step,0.0
+v_max,0.3
+aborted,
+speed,0.3
+z,0.5
+moves,hold 8.0

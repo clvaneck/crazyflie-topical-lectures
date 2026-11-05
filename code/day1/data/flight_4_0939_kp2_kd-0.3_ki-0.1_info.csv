@@ -1,0 +1,16 @@
+name,value
+drone,4
+time,0939
+run_label,kp2_kd-0.3_ki-0.1
+axes,x
+step,0.5
+v_max,0.3
+aborted,
+Kp,-2.0
+Kd,-0.3
+Ki,-0.1
+tau,0.13
+delay,0.18
+note,
+predicted_rise_s,1.8000000000000003
+predicted_overshoot_m,0.02725639393440038

@@ -1,0 +1,12 @@
+name,value
+drone,4
+time,0947
+run_label,keyboard
+axes,xy
+step,0.0
+v_max,0.2
+aborted,
+keyboard_speed,0.2
+speed,0.2
+z,0.5
+moves,hold 60

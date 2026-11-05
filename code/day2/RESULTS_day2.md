@@ -219,17 +219,22 @@ Horizontal σ assumed 0.04 m (this filter only estimates height). Height varianc
 
 **Speed rule** (replaces the fixed 0.8 m/s):
 - clearance ≤ 0 → 0
-- otherwise min(clearance / (2·lag), √(2·a·d), 0.8), with lag 0.25 s (assumed, day 1 order of
-  magnitude), braking a = 1 m/s², approach d = 0.5 m
+- otherwise min(clearance / (2·lag), √(2·a·d), 0.8), with lag **0.50 s, measured for drone 4** (5 Nov:
+  1/posCtlPid.xKp, firmware xKp 2.0, `code/day1/HANDOVER.md`; first written with an assumed 0.25 s),
+  braking a = 1 m/s², approach d = 0.5 m
 
 The lag term spends at most half the clearance on following error; the braking term means it can still stop in the run-up.
 
-| situation | gate | height σ | clearance | speed |
-| --- | --- | --- | --- | --- |
-| range available | vertical opening | 0.11 cm | 0.220 m | 0.44 m/s |
-| range available | horizontal opening | 0.11 cm | 0.220 m | 0.44 m/s |
-| **3 s range gap** | **vertical opening** | 7.4 cm | **0.134 m** | **0.27 m/s** |
-| 3 s range gap | horizontal opening | 7.4 cm | 0.220 m | 0.44 m/s |
+| situation | gate | height σ | clearance | speed, lag 0.50 s | (was, lag 0.25 s) |
+| --- | --- | --- | --- | --- | --- |
+| range available | vertical opening | 0.11 cm | 0.220 m | 0.22 m/s | 0.44 m/s |
+| range available | horizontal opening | 0.11 cm | 0.220 m | 0.22 m/s | 0.44 m/s |
+| **3 s range gap** | **vertical opening** | 7.4 cm | **0.134 m** | **0.13 m/s** | 0.27 m/s |
+| 3 s range gap | horizontal opening | 7.4 cm | 0.220 m | 0.22 m/s | 0.44 m/s |
+
+With the measured lag every speed halves; the braking (1.0 m/s) and 0.8 m/s caps do not bind. The notebook
+constant is updated; its E7 cell output still shows the 0.25 s run (re-running would mean re-running the
+notebook, whose E6 cells fly live).
 
 - The **horizontal opening is unaffected**: for it, height is the normal direction, and uncertainty along the
   normal does not reduce in-plane clearance.
@@ -287,6 +292,6 @@ The E3–E7 analysis runs offline from `results/recordings/` by pointing `captur
 
 - E2B: enter Q in the `01_tracking.ipynb` demo cell (answer above).
 - Optional `extra_six_state.ipynb` not done.
-- The E7 lag (0.25 s) should be replaced by the measured day 1 lag of drone 4.
+- Done 5 Nov: the E7 lag is now the measured 0.50 s of drone 4 (speeds halved, see E7).
 - For day 3: flight-level process noise has not been measured. Keep the firmware defaults rather than the
   stationary E2 values.
